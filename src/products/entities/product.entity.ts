@@ -8,11 +8,13 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ProductVariant } from './product-variant.entity';
 import { ProductDescription } from './product-description.entity';
+import { ProductImage } from './product-image.entity';
 
 @Entity({ name: 'product' })
 export class Product {
@@ -31,7 +33,7 @@ export class Product {
   @OneToMany(() => ProductVariant, (product_variant) => product_variant.product)
   product_variant: ProductVariant[];
 
-  @OneToMany(
+  @OneToOne(
     () => ProductDescription,
     (product_description) => product_description.product,
   )
@@ -43,6 +45,9 @@ export class Product {
 
   @Column({ nullable: true })
   category_id: string;
+
+  @OneToMany(() => ProductImage, (product_image) => product_image.product)
+  product_image: ProductImage[];
 
   @CreateDateColumn()
   created_at: Date;

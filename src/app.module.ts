@@ -7,9 +7,12 @@ import { ConfigModule } from '@nestjs/config';
 import { CategoriesModule } from './categories/categories.module';
 import { ProductsModule } from './products/products.module';
 import { CollectionsModule } from './collections/collections.module';
+import { AuthUsersModule } from './auth_users/auth_users.module';
+import { V1Module } from './v1.module';
 
 @Module({
   imports: [
+    V1Module,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -27,6 +30,7 @@ import { CollectionsModule } from './collections/collections.module';
     CategoriesModule,
     ProductsModule,
     CollectionsModule,
+    AuthUsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

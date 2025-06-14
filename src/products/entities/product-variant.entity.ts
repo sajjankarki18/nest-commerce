@@ -29,6 +29,9 @@ export class ProductVariant {
   @Column({ nullable: true, default: false })
   in_stock: boolean;
 
+  @Column({ nullable: true })
+  product_sku: string;
+
   @ManyToOne(() => Product, (product) => product.product_variant)
   @JoinColumn({ name: 'product_id' })
   product: Product;

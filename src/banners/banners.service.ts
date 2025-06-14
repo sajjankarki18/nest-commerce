@@ -15,6 +15,8 @@ import { Category } from 'src/categories/entities/category.entity';
 import { CategoryRepository } from 'src/categories/repositories/category.repository';
 import { Collection } from 'src/collections/entities/collection.entity';
 import { CollectionRepository } from 'src/collections/repositories/collection.repository';
+import { Product } from 'src/products/entities/product.entity';
+import { ProductRepository } from 'src/products/repositories/product.repository';
 
 @Injectable()
 export class BannerService {
@@ -25,6 +27,8 @@ export class BannerService {
     private readonly categoryRepository: CategoryRepository,
     @InjectRepository(Collection)
     private readonly collectionRepository: CollectionRepository,
+    @InjectRepository(Product)
+    private readonly productRepository: ProductRepository,
     private readonly logger: Logger,
   ) {}
 
@@ -39,6 +43,7 @@ export class BannerService {
       });
 
       if (!category) {
+        this.logger.warn('category redirect not found!');
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: ['redirect of category not found!'],
@@ -47,6 +52,23 @@ export class BannerService {
       }
     }
 
+    /* product redirects */
+    if (bannerDto.redirect_type === RedirectTypeEnum.Product) {
+      const product = await this.productRepository.findOne({
+        where: {
+          id: bannerDto.redirect_id,
+        },
+      });
+
+      if (!product) {
+        this.logger.warn('product redirect not found');
+        throw new NotFoundException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: ['redirect of product not found!'],
+          error: 'Not Found',
+        });
+      }
+    }
     /* collection redirects */
     if (bannerDto.redirect_type === RedirectTypeEnum.Collection) {
       const collection = await this.collectionRepository.findOne({
@@ -56,6 +78,7 @@ export class BannerService {
       });
 
       if (!collection) {
+        this.logger.warn('collection redirect not found!');
         throw new NotFoundException({
           statusCode: HttpStatus.NOT_FOUND,
           message: ['redirect of collection not found!'],

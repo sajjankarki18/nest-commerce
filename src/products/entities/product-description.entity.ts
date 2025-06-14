@@ -2,7 +2,7 @@ import {
   Column,
   Entity,
   JoinColumn,
-  ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
@@ -18,7 +18,7 @@ export class ProductDescription {
   @Column({ nullable: true })
   product_id: string;
 
-  @ManyToOne(() => Product, (product) => product.product_description)
+  @OneToOne(() => Product, (product) => product.product_description)
   @JoinColumn({ name: 'product_id' })
   product: Product;
 }
