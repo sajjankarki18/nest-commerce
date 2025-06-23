@@ -9,6 +9,7 @@ import { ProductsModule } from './products/products.module';
 import { CollectionsModule } from './collections/collections.module';
 import { AuthUsersModule } from './auth_users/auth_users.module';
 import { V1Module } from './v1.module';
+import { DeviceTypesModule } from './device-types/device-types.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { V1Module } from './v1.module';
     ProductsModule,
     CollectionsModule,
     AuthUsersModule,
+    DeviceTypesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
