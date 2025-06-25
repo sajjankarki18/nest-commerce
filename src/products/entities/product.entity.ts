@@ -25,6 +25,9 @@ export class Product {
   title: string;
 
   @Column({ nullable: true })
+  short_description: string;
+
+  @Column({ nullable: true })
   slug: string;
 
   @Column({ nullable: true, default: StatusEnumType.Draft })

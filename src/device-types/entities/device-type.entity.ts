@@ -1,4 +1,4 @@
-import { StatusEnumType } from "src/enums/StatusType.enum";
+import { StatusEnumType } from 'src/enums/StatusType.enum';
 import {
   Column,
   CreateDateColumn,
@@ -7,12 +7,12 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from "typeorm";
-import { Brand } from "./brand.entity";
+} from 'typeorm';
+import { Brand } from './brand.entity';
 
-@Entity({ name: "device_type" })
+@Entity({ name: 'device_type' })
 export class DeviceType {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ nullable: true })
@@ -41,4 +41,4 @@ export class DeviceType {
 
   @DeleteDateColumn()
   deleted_at: Date;
-} 
+}

@@ -7,6 +7,7 @@ import { ProductDescription } from './entities/product-description.entity';
 import { ProductAdminController } from './products.admin.controller';
 import { ProductService } from './products.service';
 import { ProductImage } from './entities/product-image.entity';
+import { ProductController } from './products.controller';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { ProductImage } from './entities/product-image.entity';
       ProductImage,
     ]),
   ],
-  controllers: [ProductAdminController],
+  controllers: [ProductAdminController, ProductController],
   providers: [ProductService, Logger],
 })
 export class ProductsModule {}

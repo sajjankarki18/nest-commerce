@@ -7,13 +7,13 @@ import {
   ManyToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from "typeorm";
-import { Brand } from "./brand.entity";
-import { StatusEnumType } from "src/enums/StatusType.enum";
+} from 'typeorm';
+import { Brand } from './brand.entity';
+import { StatusEnumType } from 'src/enums/StatusType.enum';
 
-@Entity({ name: "model" })
+@Entity({ name: 'model' })
 export class Model {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ nullable: true })
@@ -23,7 +23,7 @@ export class Model {
   brand_id: string;
 
   @ManyToMany(() => Brand, (brand) => brand.model)
-  @JoinColumn({ name: "brand_id" })
+  @JoinColumn({ name: 'brand_id' })
   brand: Brand;
 
   @Column({ nullable: true, default: StatusEnumType.Draft })

@@ -8,14 +8,14 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from "typeorm";
-import { DeviceType } from "./device-type.entity";
-import { StatusEnumType } from "src/enums/StatusType.enum";
-import { Model } from "./model.entity";
+} from 'typeorm';
+import { DeviceType } from './device-type.entity';
+import { StatusEnumType } from 'src/enums/StatusType.enum';
+import { Model } from './model.entity';
 
-@Entity({ name: "brand" })
+@Entity({ name: 'brand' })
 export class Brand {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ nullable: true })
@@ -25,7 +25,7 @@ export class Brand {
   device_id: string;
 
   @ManyToOne(() => DeviceType, (device_type) => device_type.brand)
-  @JoinColumn({ name: "device_id" })
+  @JoinColumn({ name: 'device_id' })
   device_type: DeviceType;
 
   @OneToMany(() => Model, (model) => model.brand)

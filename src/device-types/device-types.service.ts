@@ -5,21 +5,21 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DeviceType } from "./entities/device-type.entity";
-import { BrandRepository } from "./repositories/brand.repository";
-import { Model } from "./entities/model.entity";
-import { ModelRepository } from "./repositories/model.repository";
-import slugify from "slugify";
-import { Brand } from "./entities/brand.entity";
-import { CreateDeviceTypeDto } from "./dto/deviceType-dto/create-deviceType.dto";
-import { UpdateDeviceTypeDto } from "./dto/deviceType-dto/update-deviceType.dto";
-import { CreateBrandDto } from "./dto/brand-dto/create-brand.dto";
-import { UpdateBrandDto } from "./dto/brand-dto/update-brand.dto";
-import { CreateModelDto } from "./dto/model-dto/create-model.dto";
-import { UpdateModelDto } from "./dto/model-dto/update-model.dto";
-import { DevicetypeRespository } from "./repositories/device-type.repository";
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DeviceType } from './entities/device-type.entity';
+import { BrandRepository } from './repositories/brand.repository';
+import { Model } from './entities/model.entity';
+import { ModelRepository } from './repositories/model.repository';
+import slugify from 'slugify';
+import { Brand } from './entities/brand.entity';
+import { CreateDeviceTypeDto } from './dto/deviceType-dto/create-deviceType.dto';
+import { UpdateDeviceTypeDto } from './dto/deviceType-dto/update-deviceType.dto';
+import { CreateBrandDto } from './dto/brand-dto/create-brand.dto';
+import { UpdateBrandDto } from './dto/brand-dto/update-brand.dto';
+import { CreateModelDto } from './dto/model-dto/create-model.dto';
+import { UpdateModelDto } from './dto/model-dto/update-model.dto';
+import { DevicetypeRespository } from './repositories/device-type.repository';
 
 @Injectable()
 export class DevicetypeService {
@@ -48,9 +48,9 @@ export class DevicetypeService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while creating a new deviceType, please try again later!",
+          'some error occurred while creating a new deviceType, please try again later!',
         ],
-        error: "Not Found",
+        error: 'Not Found',
       });
     }
   }
@@ -66,7 +66,7 @@ export class DevicetypeService {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
         message: [`Device-type with ${id} has not found!`],
-        error: "Not Found",
+        error: 'Not Found',
       });
     }
 
@@ -86,11 +86,11 @@ export class DevicetypeService {
     total: number;
   }> {
     if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
-      this.logger.warn("page and limit should be of positive integers!");
+      this.logger.warn('page and limit should be of positive integers!');
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
-        message: ["Page and limit should be of positive integers!"],
-        error: "Conflict",
+        message: ['Page and limit should be of positive integers!'],
+        error: 'Conflict',
       });
     }
 
@@ -99,10 +99,10 @@ export class DevicetypeService {
       await this.deviceTypeRepository.findAndCount({
         skip: (page - 1) * newLimit,
         take: newLimit,
-        order: { created_at: "desc" },
+        order: { created_at: 'desc' },
       });
 
-    this.logger.log("devices has been fetched successfully!");
+    this.logger.log('devices has been fetched successfully!');
     return {
       data: deviceTypes,
       page: page,
@@ -137,13 +137,13 @@ export class DevicetypeService {
 
       return await this.deviceTypeRepository.findOne({ where: { id } });
     } catch (error) {
-      this.logger.error("some error occurred, while updating the device-type");
+      this.logger.error('some error occurred, while updating the device-type');
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while updating the device-type, please try again",
+          'some error occurred while updating the device-type, please try again',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }
@@ -154,16 +154,16 @@ export class DevicetypeService {
       await this.deviceTypeRepository.delete(id);
       return {
         id: `${id}`,
-        message: "device-type has been deleted successfully",
+        message: 'device-type has been deleted successfully',
       };
     } catch (error) {
-      this.logger.error("some error occurred, while deleting the device-type");
+      this.logger.error('some error occurred, while deleting the device-type');
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while deleting the device-type, please try again",
+          'some error occurred while deleting the device-type, please try again',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }
@@ -180,7 +180,7 @@ export class DevicetypeService {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
         message: [`device_type with ${deviceId} not found`],
-        error: "Not Found",
+        error: 'Not Found',
       });
     }
   }
@@ -204,9 +204,9 @@ export class DevicetypeService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while creating a new brand, please try again!",
+          'some error occurred while creating a new brand, please try again!',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }
@@ -222,7 +222,7 @@ export class DevicetypeService {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
         message: [`brand with ${id} not found!`],
-        error: "Not Found",
+        error: 'Not Found',
       });
     }
 
@@ -239,8 +239,8 @@ export class DevicetypeService {
     if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
-        message: ["page and limit should be positive integers!"],
-        error: "Conflict",
+        message: ['page and limit should be positive integers!'],
+        error: 'Conflict',
       });
     }
 
@@ -248,7 +248,7 @@ export class DevicetypeService {
     const [brands, totalBrands] = await this.brandRepository.findAndCount({
       skip: (page - 1) * newLimit,
       take: newLimit,
-      order: { created_at: "desc" },
+      order: { created_at: 'desc' },
     });
 
     return {
@@ -277,9 +277,9 @@ export class DevicetypeService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while updating a brand, please try again!",
+          'some error occurred while updating a brand, please try again!',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }
@@ -290,15 +290,15 @@ export class DevicetypeService {
       await this.brandRepository.delete(id);
       return {
         id: `${id}`,
-        message: "brand has been deleted successfully!",
+        message: 'brand has been deleted successfully!',
       };
     } catch (error) {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while deleting a brand, please try again!",
+          'some error occurred while deleting a brand, please try again!',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }
@@ -315,7 +315,7 @@ export class DevicetypeService {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
         message: [`brand with ${brandId} not found`],
-        error: "Not Found",
+        error: 'Not Found',
       });
     }
   }
@@ -336,9 +336,9 @@ export class DevicetypeService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while creating a new model, please try again!",
+          'some error occurred while creating a new model, please try again!',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }
@@ -354,7 +354,7 @@ export class DevicetypeService {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
         message: [`model with ${id} not found!`],
-        error: "Not Found",
+        error: 'Not Found',
       });
     }
 
@@ -371,8 +371,8 @@ export class DevicetypeService {
     if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
-        message: ["page and limit should be positive integers!"],
-        error: "Conflict",
+        message: ['page and limit should be positive integers!'],
+        error: 'Conflict',
       });
     }
 
@@ -380,7 +380,7 @@ export class DevicetypeService {
     const [models, totalModels] = await this.modelRepository.findAndCount({
       skip: (page - 1) * newLimit,
       take: newLimit,
-      order: { created_at: "desc" },
+      order: { created_at: 'desc' },
     });
 
     return {
@@ -409,9 +409,9 @@ export class DevicetypeService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while updating a model, please try again!",
+          'some error occurred while updating a model, please try again!',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }
@@ -422,15 +422,15 @@ export class DevicetypeService {
       await this.modelRepository.delete(id);
       return {
         id: `${id}`,
-        message: "model has been deleted successfully!",
+        message: 'model has been deleted successfully!',
       };
     } catch (error) {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          "some error occurred while deleting a model, please try again!",
+          'some error occurred while deleting a model, please try again!',
         ],
-        error: "Internal Server Error",
+        error: 'Internal Server Error',
       });
     }
   }

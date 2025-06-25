@@ -17,6 +17,7 @@ import { Collection } from 'src/collections/entities/collection.entity';
 import { CollectionRepository } from 'src/collections/repositories/collection.repository';
 import { Product } from 'src/products/entities/product.entity';
 import { ProductRepository } from 'src/products/repositories/product.repository';
+import { StatusEnumType } from 'src/enums/StatusType.enum';
 
 @Injectable()
 export class BannerService {
@@ -31,6 +32,69 @@ export class BannerService {
     private readonly productRepository: ProductRepository,
     private readonly logger: Logger,
   ) {}
+
+  /* frontend service to fetch all banners with the related redirects */
+  async getAllBannersWithRedirects() {
+    const banners = await this.bannerRepository.find({
+      where: {
+        status: StatusEnumType.Published,
+        is_active: true,
+      },
+    });
+
+    const bannerRedirectData: any[] = [];
+    for (const banner of banners) {
+      let redirects: { title: string; id: string } = { title: '', id: '' };
+
+      /* banner redirects */
+      if (RedirectTypeEnum.Category === banner.redirect_type) {
+        const category = await this.categoryRepository.findOne({
+          where: {
+            id: banner.redirect_id,
+          },
+        });
+
+        redirects = category
+          ? { title: category.name, id: category.id }
+          : { title: '', id: '' };
+      }
+
+      /* category redirects */
+      if (RedirectTypeEnum.Product === banner.redirect_type) {
+        const product = await this.productRepository.findOne({
+          where: {
+            id: banner.redirect_id,
+          },
+        });
+
+        redirects = product
+          ? { title: product.title, id: product.id }
+          : { title: '', id: '' };
+      }
+
+      /* collection redirects */
+      if (RedirectTypeEnum.Collection === banner.redirect_type) {
+        const collection = await this.collectionRepository.findOne({
+          where: {
+            id: banner.redirect_id,
+          },
+        });
+
+        redirects = collection
+          ? { title: collection.title, id: collection.id }
+          : { title: '', id: '' };
+      }
+
+      bannerRedirectData.push({
+        ...banner,
+        redirects: redirects,
+      });
+    }
+
+    return {
+      data: bannerRedirectData,
+    };
+  }
 
   /* validate the redirectTypes before updating or creating it */
   async validateBannerRedirectTypes(bannerDto: CreateBannerDto): Promise<void> {

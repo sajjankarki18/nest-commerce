@@ -15,6 +15,9 @@ export class ProductImage {
   @Column({ nullable: true })
   image_url: string;
 
+  @Column({ nullable: true })
+  is_primary: boolean;
+
   @ManyToOne(() => Product, (product) => product.product_image)
   @JoinColumn({ name: 'product_id' })
   product: Product;

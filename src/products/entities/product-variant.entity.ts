@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Product } from './product.entity';
 import { ProductVariantPricing } from './product-variantPricing.entity';
+import { ColorEnum, SizeEnum } from 'src/enums/VariantDetails.enum';
 
 @Entity({ name: 'product_variant' })
 export class ProductVariant {
@@ -21,13 +22,16 @@ export class ProductVariant {
   variant_title: string;
 
   @Column({ nullable: true })
-  variant_description: string;
-
-  @Column({ nullable: true })
   quantity: number;
 
   @Column({ nullable: true, default: false })
   in_stock: boolean;
+
+  @Column({ nullable: true, default: SizeEnum.S })
+  size: SizeEnum;
+
+  @Column({ nullable: true, default: ColorEnum.Red })
+  color: ColorEnum;
 
   @Column({ nullable: true })
   product_sku: string;

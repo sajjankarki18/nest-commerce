@@ -1,5 +1,5 @@
-import { CreateDeviceTypeDto } from "./create-deviceType.dto";
+import { CreateDeviceTypeDto } from './create-deviceType.dto';
 
 export class UpdateDeviceTypeDto extends CreateDeviceTypeDto {
-    readonly id: string;
+  readonly id: string;
 }

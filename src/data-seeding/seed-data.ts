@@ -15,6 +15,7 @@ import { ProductVariantPricing } from 'src/products/entities/product-variantPric
 import { ProductDescription } from 'src/products/entities/product-description.entity';
 import { ProductImage } from 'src/products/entities/product-image.entity';
 import { CurrencyTypeEnum } from 'src/enums/CurrencyType.enum';
+import { ColorEnum, SizeEnum } from 'src/enums/VariantDetails.enum';
 
 export const seedData = async (dataSource: DataSource): Promise<void> => {
   await seedBannersData(dataSource);
@@ -35,10 +36,17 @@ const seedBannersData = async (dataSource: DataSource) => {
 
   const bannersRepository = dataSource.getRepository(Banner);
   const categoriesRepository = dataSource.getRepository(Category);
+  const productsRepository = dataSource.getRepository(Product);
+  const collectionRepository = dataSource.getRepository(Collection);
+
   const categories = await categoriesRepository.find();
+  const products = await productsRepository.find();
+  const collections = await collectionRepository.find();
 
   const seedBanners = (): Banner[] => {
     const randomCategoryData = faker.helpers.arrayElement(categories);
+    const randomProductsData = faker.helpers.arrayElement(products);
+    const randomCollectionData = faker.helpers.arrayElement(collections);
 
     /* categories-redirects */
     const categoriesData = bannersRepository.create({
@@ -63,7 +71,7 @@ const seedBannersData = async (dataSource: DataSource) => {
       ]),
       is_active: faker.datatype.boolean(),
       redirect_type: RedirectTypeEnum.Product,
-      redirect_id: faker.string.uuid(),
+      redirect_id: randomProductsData.id,
     });
 
     /* collection-redirects */
@@ -75,8 +83,8 @@ const seedBannersData = async (dataSource: DataSource) => {
         StatusEnumType.Draft,
       ]),
       is_active: faker.datatype.boolean(),
-      redirect_type: RedirectTypeEnum.Product,
-      redirect_id: faker.string.uuid(),
+      redirect_type: RedirectTypeEnum.Collection,
+      redirect_id: randomCollectionData.id,
     });
 
     return [categoriesData, productsData, collectionData];
@@ -202,6 +210,7 @@ const seedProductsData = async (dataSource: DataSource) => {
     });
     const products = productRepository.create({
       title: title,
+      short_description: faker.lorem.sentence(),
       slug: slug,
       status: faker.helpers.arrayElement([
         StatusEnumType.Published,
@@ -243,15 +252,25 @@ const seedProductsData = async (dataSource: DataSource) => {
   }
   /* product-images */
   /* product-variants */
+  const sizeValues = Object.values(SizeEnum);
+  const colorValues = Object.values(ColorEnum);
   for (const product of products) {
     const numberOfVariants: number = faker.number.int({ min: 2, max: 3 });
 
+    // Shuffle size and color arrays to get random unique combos
+    const shuffledSizes = faker.helpers.shuffle(sizeValues);
+    const shuffledColors = faker.helpers.shuffle(colorValues);
+
     for (let index = 0; index < numberOfVariants; index++) {
+      const size = shuffledSizes[index];
+      const color = shuffledColors[index];
+
       const productVariant = productVariantRepository.create({
-        variant_title: faker.lorem.word(),
-        variant_description: faker.lorem.words(),
+        variant_title: `${size} / ${color}`,
+        size: size,
+        color: color,
         quantity: faker.number.int({ min: 1, max: 50 }),
-        in_stock: faker.datatype.boolean(),
+        in_stock: true,
         product_sku: faker.lorem.slug(),
         product_id: product.id,
       });

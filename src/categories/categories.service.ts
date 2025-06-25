@@ -13,7 +13,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
 import slugify from 'slugify';
-import { In } from 'typeorm';
+import { In, IsNull } from 'typeorm';
 
 @Injectable()
 export class CategoriesService {
@@ -22,6 +22,36 @@ export class CategoriesService {
     private readonly categoryRepository: CategoryRepository,
     private readonly logger: Logger,
   ) {}
+
+  /* store-front service to get all parent-categories to display at home page */
+  async getAllParentCategories() {
+    try {
+      const [parentCategories, totalParentCategories] =
+        await this.categoryRepository.findAndCount({
+          where: {
+            parent_id: IsNull(),
+            status: StatusEnumType.Published,
+          },
+        });
+
+      return {
+        data: parentCategories,
+        total: totalParentCategories,
+      };
+    } catch (error) {
+      this.logger.error(
+        'some error occurred while fetching parent_categories!',
+        error,
+      );
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: [
+          `some error occurred while fetching parent_categories, please try again`,
+        ],
+        error: 'Internal Server Error',
+      });
+    }
+  }
 
   /* category heirarchy updation logic */
   async categoryHeirarchyUpdation(

@@ -23,6 +23,9 @@ import { CreateProductVariantDto } from './dto/create-productVariant.dto';
 import { UpdateProductVariantDto } from './dto/update-productVariant.dto';
 import { CreateProductDescriptionDto } from './dto/create-productDescription.dto';
 import { UpdateProductDescriptionDto } from './dto/update-productDescription.dto';
+import { ProductVariantPricingRepository } from './repositories/product-variantPricing.repository';
+import { ProductImage } from './entities/product-image.entity';
+import { ProductImageRepository } from './repositories/product-image.repository';
 
 @Injectable()
 export class ProductService {
@@ -35,8 +38,146 @@ export class ProductService {
     @InjectRepository(ProductVariant)
     private readonly productVariantRepository: ProductVariantRepository,
     @InjectRepository(ProductVariantPricing)
-    private readonly productVariantPricingRepository: ProductVariantRepository,
+    private readonly productVariantPricingRepository: ProductVariantPricingRepository,
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: ProductImageRepository,
   ) {}
+
+  /* product store-front services */
+  async getAllProductsStoreFront({
+    page,
+    limit,
+  }: {
+    page: number;
+    limit: number;
+  }): Promise<{ data: Product[]; page: number; limit: number; total: number }> {
+    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
+      throw new ConflictException({
+        statusCode: HttpStatus.CONFLICT,
+        message: ['Page and limit should be of positive integers!'],
+        error: 'Conflict',
+      });
+    }
+
+    const newLimit: number = limit > 10 ? 10 : limit;
+    const [products, totalProducts] = await this.productRepository.findAndCount(
+      {
+        where: {
+          status: StatusEnumType.Published,
+        },
+        skip: (page - 1) * limit,
+        take: newLimit,
+        order: { created_at: 'desc' },
+        select: ['id', 'title', 'slug', 'category_id', 'status'],
+      },
+    );
+
+    const productsData = await Promise.all(
+      products.map(async (product) => {
+        /* fetch product_variant */
+        const productVariant = await this.productVariantRepository.findOne({
+          where: {
+            product_id: product?.id,
+          },
+        });
+
+        /* fetch product_pricing */
+        const productPricing =
+          await this.productVariantPricingRepository.findOne({
+            where: {
+              variant_id: productVariant?.id,
+            },
+          });
+
+        /* fetch product_image */
+        const productImage = await this.productImageRepository.findOne({
+          where: {
+            product_id: product?.id,
+          },
+        });
+
+        console.log(productImage);
+
+        /* fetch product_pricing */
+        return {
+          ...product,
+          product_pricing: productPricing && {
+            selling_price: productPricing.selling_price,
+            cross_price: productPricing.crossed_price,
+            in_stock: productVariant && productVariant?.in_stock,
+          },
+          image: productImage && {
+            id: productImage?.id,
+            product_id: productImage?.product_id,
+            image_url: productImage?.image_url,
+          },
+        };
+      }),
+    );
+
+    return {
+      data: productsData,
+      page: page,
+      limit: newLimit,
+      total: totalProducts,
+    };
+  }
+
+  /* get products by slug */
+  async getProductsBySlug(slug: string) {
+    const product = await this.productRepository.findOne({
+      where: {
+        slug: slug,
+        status: StatusEnumType.Published,
+      },
+      select: [
+        'id',
+        'title',
+        'short_description',
+        'slug',
+        'status',
+        'category_id',
+      ],
+    });
+
+    if (!product) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: [`Product with ${slug} not found!`],
+        error: 'Not Found',
+      });
+    }
+
+    const [productVariants, productImages] = await Promise.all([
+      /* fetch product_variants */
+      await this.productVariantRepository.find({
+        where: {
+          product_id: product?.id,
+        },
+        select: [
+          'id',
+          'variant_title',
+          'quantity',
+          'in_stock',
+          'size',
+          'color',
+        ],
+      }),
+
+      /* fetch product_images */
+      await this.productImageRepository.find({
+        where: {
+          product_id: product?.id,
+        },
+      }),
+    ]);
+
+    return {
+      ...product,
+      variants: productVariants,
+      images: productImages,
+    };
+  }
 
   /* product-routes */
   /* create a new product */
@@ -242,7 +383,6 @@ export class ProductService {
     try {
       const product_variant = this.productVariantRepository.create({
         variant_title: productVariantDto.variant_title,
-        variant_description: productVariantDto.variant_description,
         quantity: productVariantDto.quantity,
         product_id: productVariantDto.product_id,
         in_stock: productVariantDto.in_stock,
@@ -295,7 +435,6 @@ export class ProductService {
         { id: id },
         {
           variant_title: productVariantDto.variant_title,
-          variant_description: productVariantDto.variant_description,
           quantity: productVariantDto.quantity,
           in_stock: productVariantDto.in_stock,
           product_id: productVariantDto.product_id,
