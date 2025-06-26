@@ -14,12 +14,28 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
 import slugify from 'slugify';
 import { In, IsNull } from 'typeorm';
+import { Product } from 'src/products/entities/product.entity';
+import { ProductRepository } from 'src/products/repositories/product.repository';
+import { ProductVariant } from 'src/products/entities/product-variant.entity';
+import { ProductVariantRepository } from 'src/products/repositories/product-variant.repository';
+import { ProductVariantPricing } from 'src/products/entities/product-variantPricing.entity';
+import { ProductImage } from 'src/products/entities/product-image.entity';
+import { ProductImageRepository } from 'src/products/repositories/product-image.repository';
+import { ProductVariantPricingRepository } from 'src/products/repositories/product-variantPricing.repository';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private readonly categoryRepository: CategoryRepository,
+    @InjectRepository(Product)
+    private readonly productRepository: ProductRepository,
+    @InjectRepository(ProductVariant)
+    private readonly productVariantRepository: ProductVariantRepository,
+    @InjectRepository(ProductVariantPricing)
+    private readonly productVariantPricingRepository: ProductVariantPricingRepository,
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: ProductImageRepository,
     private readonly logger: Logger,
   ) {}
 
@@ -51,6 +67,137 @@ export class CategoriesService {
         error: 'Internal Server Error',
       });
     }
+  }
+
+  async fetchCategory(id: string): Promise<Category[]> {
+    const category = await this.categoryRepository.find({
+      where: {
+        status: StatusEnumType.Published,
+        parent_id: id,
+      },
+      select: ['id', 'parent_id', 'name', 'description', 'slug'],
+    });
+
+    return category;
+  }
+
+  /* get all categories for store front with the related sub categories */
+  async getAllCategoriesForStore() {
+    try {
+      /* fetch the first level categories */
+      const firstLevelCategories = await this.categoryRepository.find({
+        where: {
+          status: StatusEnumType.Published,
+          parent_id: IsNull(),
+        },
+        select: ['id', 'parent_id', 'name', 'description', 'slug'],
+      });
+
+      /* fetch the sub_categoreis of first_level */
+      const categoriesData = await Promise.all(
+        firstLevelCategories.map(async (firstLevelCategory) => {
+          /* fetch the second level categories */
+          const secondLevelCategories = await this.fetchCategory(
+            firstLevelCategory?.id,
+          );
+
+          /* fetch the third level categories */
+          const mappedSecondLevelSubCategories = await Promise.all(
+            secondLevelCategories.map(async (secondLevelCategory) => {
+              const thirdLevelCategories = await this.fetchCategory(
+                secondLevelCategory?.id,
+              );
+
+              return {
+                ...secondLevelCategory,
+                third_level: thirdLevelCategories,
+              };
+            }),
+          );
+
+          return {
+            ...firstLevelCategory,
+            second_level: mappedSecondLevelSubCategories,
+          };
+        }),
+      );
+
+      return {
+        data: categoriesData,
+      };
+    } catch (error) {
+      this.logger.log('server error occurred', error);
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: [
+          'some error occurred while fetching the category, please try again!',
+        ],
+        error: 'Internal Server Error',
+      });
+    }
+  }
+
+  /* get all related products by category slug */
+  async getAllCategoryProductsBySlug(slug: string) {
+    const category = await this.categoryRepository.findOne({
+      where: {
+        slug: slug,
+      },
+    });
+
+    if (!category) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: [`category with slug ${slug} not found!`],
+        error: 'Not Found',
+      });
+    }
+
+    const products = await this.productRepository.find({
+      where: {
+        category_id: category?.id,
+        status: StatusEnumType.Published,
+      },
+      select: ['id', 'title', 'short_description', 'slug', 'category_id'],
+    });
+
+    /* fetch those products by category slug */
+    const productsData = await Promise.all(
+      products.map(async (product) => {
+        const product_variant = await this.productVariantRepository.findOne({
+          where: {
+            product_id: product?.id,
+          },
+        });
+
+        /* fetch product_pricing */
+        const product_pricing =
+          await this.productVariantPricingRepository.findOne({
+            where: {
+              variant_id: product_variant?.id,
+            },
+            select: ['id', 'selling_price', 'crossed_price'],
+          });
+
+        /* fetch product_images */
+        const product_image = await this.productImageRepository.findOne({
+          where: {
+            product_id: product?.id,
+          },
+          select: ['id', 'image_url', 'is_primary'],
+        });
+
+        return {
+          ...product,
+          pricing: product_pricing,
+          image: product_image,
+        };
+      }),
+    );
+
+    return {
+      data: productsData,
+    };
   }
 
   /* category heirarchy updation logic */
@@ -90,6 +237,7 @@ export class CategoriesService {
       }
     }
   }
+
   /* create a new category */
   async createCategory(categoryDto: CreateCategoryDto) {
     try {

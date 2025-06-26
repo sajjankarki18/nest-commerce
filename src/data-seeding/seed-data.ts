@@ -121,6 +121,7 @@ const seedCategoriesData = async (dataSource: DataSource) => {
       deviceCategory = await categoryRepository.save({
         name: categoryDataItem.name,
         slug: faker.helpers.slugify(categoryDataItem.name).toLowerCase(),
+        description: faker.lorem.sentence(),
         status: StatusEnumType.Published,
         icon_url: faker.image.url(),
       });
@@ -137,6 +138,7 @@ const seedCategoriesData = async (dataSource: DataSource) => {
         skinTypeCategory = await categoryRepository.save({
           name: skinTypeData.name,
           slug: faker.helpers.slugify(skinTypeData.name).toLowerCase(),
+          description: faker.lorem.sentence(),
           parent_id: deviceCategory.id,
           status: StatusEnumType.Published,
         });
@@ -153,6 +155,7 @@ const seedCategoriesData = async (dataSource: DataSource) => {
           await categoryRepository.save({
             name: subcategoryData.name,
             slug: faker.helpers.slugify(subcategoryData.name).toLowerCase(),
+            description: faker.lorem.sentence(),
             parent_id: skinTypeCategory.id,
             status: StatusEnumType.Published,
           });
@@ -245,6 +248,7 @@ const seedProductsData = async (dataSource: DataSource) => {
       const productImage = productImageRepository.create({
         image_url: faker.image.url(),
         product_id: product.id,
+        is_primary: faker.datatype.boolean(),
       });
 
       await productImageRepository.save(productImage);

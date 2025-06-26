@@ -40,6 +40,7 @@ export class AuthenticationMiddleware implements NestMiddleware {
       req.user = decryptedToken;
       next();
     } catch (error) {
+      this.logger.error(`session expired or invalid, please try again!`, error);
       this.logger.error(`session expired or invalid, please try again later!`);
       throw new UnauthorizedException({
         statusCode: HttpStatus.UNAUTHORIZED,

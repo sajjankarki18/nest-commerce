@@ -65,7 +65,7 @@ export class ProductService {
         where: {
           status: StatusEnumType.Published,
         },
-        skip: (page - 1) * limit,
+        skip: (page - 1) * newLimit,
         take: newLimit,
         order: { created_at: 'desc' },
         select: ['id', 'title', 'slug', 'category_id', 'status'],
@@ -96,15 +96,13 @@ export class ProductService {
           },
         });
 
-        console.log(productImage);
-
         /* fetch product_pricing */
         return {
           ...product,
           product_pricing: productPricing && {
             selling_price: productPricing.selling_price,
             cross_price: productPricing.crossed_price,
-            in_stock: productVariant && productVariant?.in_stock,
+            in_stock: productVariant?.in_stock,
           },
           image: productImage && {
             id: productImage?.id,

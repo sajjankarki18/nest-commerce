@@ -45,6 +45,7 @@ export class DevicetypeService {
       });
       return await this.deviceTypeRepository.save(deviceType);
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -137,6 +138,7 @@ export class DevicetypeService {
 
       return await this.deviceTypeRepository.findOne({ where: { id } });
     } catch (error) {
+      console.log(error);
       this.logger.error('some error occurred, while updating the device-type');
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -157,7 +159,10 @@ export class DevicetypeService {
         message: 'device-type has been deleted successfully',
       };
     } catch (error) {
-      this.logger.error('some error occurred, while deleting the device-type');
+      this.logger.error(
+        'some error occurred, while deleting the device-type',
+        error,
+      );
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -201,6 +206,7 @@ export class DevicetypeService {
 
       return await this.brandRepository.save(brand);
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -274,6 +280,7 @@ export class DevicetypeService {
 
       return await this.brandRepository.findOne({ where: { id } });
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -293,6 +300,7 @@ export class DevicetypeService {
         message: 'brand has been deleted successfully!',
       };
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -333,6 +341,7 @@ export class DevicetypeService {
 
       return await this.modelRepository.save(model);
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -406,6 +415,7 @@ export class DevicetypeService {
 
       return await this.modelRepository.findOne({ where: { id } });
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -425,6 +435,7 @@ export class DevicetypeService {
         message: 'model has been deleted successfully!',
       };
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
