@@ -20,6 +20,7 @@ import { UpdateBrandDto } from './dto/brand-dto/update-brand.dto';
 import { CreateModelDto } from './dto/model-dto/create-model.dto';
 import { UpdateModelDto } from './dto/model-dto/update-model.dto';
 import { DevicetypeRespository } from './repositories/device-type.repository';
+import { StatusEnumType } from 'src/enums/StatusType.enum';
 
 @Injectable()
 export class DevicetypeService {
@@ -32,6 +33,98 @@ export class DevicetypeService {
     private readonly modelRepository: ModelRepository,
     private readonly logger: Logger,
   ) {}
+
+  /* frontend services */
+  async getAllBrandsWithDevices({
+    page,
+    limit,
+    deviceId,
+  }: {
+    page: number;
+    limit: number;
+    deviceId: string;
+  }) {
+    if (!page || !limit) {
+      const brands = await this.brandRepository.find({
+        where: { status: StatusEnumType.Published, device_id: deviceId },
+      });
+      return {
+        data: brands,
+      };
+    }
+
+    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: ['page and limit should be of positive integers!'],
+        error: 'Not Found',
+      });
+    }
+
+    const newLimit: number = limit > 10 ? 10 : limit;
+    const [brands, totalBrand] = await this.brandRepository.find({
+      where: {
+        status: StatusEnumType.Published,
+        device_id: deviceId,
+      },
+      skip: (page - 1) * newLimit,
+      take: newLimit,
+      order: { created_at: 'desc' },
+    });
+
+    return {
+      data: brands,
+      page: page,
+      limit: limit,
+      total: totalBrand,
+    };
+  }
+
+  /* fetch all models with accociated brands */
+  async getAllModelsWithBrandId({
+    page,
+    limit,
+    brandId,
+  }: {
+    page: number;
+    limit: number;
+    brandId: string;
+  }) {
+    if (!page || !limit) {
+      const brands = await this.modelRepository.find({
+        where: { status: StatusEnumType.Published, brand_id: brandId },
+      });
+      return {
+        data: brands,
+      };
+    }
+
+    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: ['page and limit should be of positive integers!'],
+        error: 'Not Found',
+      });
+    }
+
+    const newLimit: number = limit > 10 ? 10 : limit;
+    const [models, totalModels] = await this.modelRepository.find({
+      where: {
+        status: StatusEnumType.Published,
+        brand_id: brandId,
+      },
+      skip: (page - 1) * newLimit,
+      take: newLimit,
+      order: { created_at: 'desc' },
+    });
+
+    return {
+      data: models,
+      page: page,
+      limit: limit,
+      total: totalModels,
+    };
+  }
 
   async createDeviceType(
     deviceTypeDto: CreateDeviceTypeDto,

@@ -14,6 +14,17 @@ import { CreateCollectionDto } from './dto/create-collection.dto';
 import { UpdateCollectionDto } from './dto/update-collection.dto';
 import { CreateCollectionRedirectDto } from './dto/create-collectionRedirect.dto';
 import slugify from 'slugify';
+import { StatusEnumType } from 'src/enums/StatusType.enum';
+import { Product } from 'src/products/entities/product.entity';
+import { ProductRepository } from 'src/products/repositories/product.repository';
+import { ProductVariant } from 'src/products/entities/product-variant.entity';
+import { ProductVariantRepository } from 'src/products/repositories/product-variant.repository';
+import { ProductVariantPricing } from 'src/products/entities/product-variantPricing.entity';
+import { ProductImage } from 'src/products/entities/product-image.entity';
+import { ProductImageRepository } from 'src/products/repositories/product-image.repository';
+import { ProductVariantPricingRepository } from 'src/products/repositories/product-variantPricing.repository';
+import { CollectionRedirectTypeEnum } from './types/collection-redirectType.enum';
+import { In } from 'typeorm';
 
 @Injectable()
 export class CollectionsService {
@@ -22,9 +33,161 @@ export class CollectionsService {
     private readonly collectionRepository: CollectionRepository,
     @InjectRepository(CollectionRedirect)
     private readonly collectionRedirectRepository: CollectionRedirectRepository,
+    @InjectRepository(Product)
+    private readonly productRepository: ProductRepository,
+    @InjectRepository(ProductVariant)
+    private readonly productVariantRepository: ProductVariantRepository,
+    @InjectRepository(ProductVariantPricing)
+    private readonly productVariantPricingRepository: ProductVariantPricingRepository,
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: ProductImageRepository,
     private readonly logger: Logger,
   ) {}
 
+  /* frontend services */
+  /* helper method for get collection by slug */
+  async getMappedProductData(products: Product[]) {
+    const productIds: string[] = products.map((product) => product.id);
+
+    /* fetch product-variants data */
+    const productVariants = await this.productVariantRepository.find({
+      where: {
+        product_id: In(productIds),
+      },
+    });
+
+    const mappedProductVariants = new Map(
+      productVariants.map((productVariant) => [
+        productVariant.product_id,
+        productVariant,
+      ]),
+    );
+
+    const productVariantIds: string[] = productVariants.map(
+      (productvariant) => productvariant.id,
+    );
+
+    /* fetch product-variant pricing */
+    const productVariantPricing =
+      await this.productVariantPricingRepository.find({
+        where: {
+          variant_id: In(productVariantIds),
+        },
+      });
+
+    const mappedProductVariantPricing = new Map(
+      productVariantPricing.map((productVariantPricing) => [
+        productVariantPricing.variant_id,
+        productVariantPricing,
+      ]),
+    );
+
+    /* fetch product-images */
+    const productImages = await this.productImageRepository.find({
+      where: {
+        product_id: In(productIds),
+      },
+    });
+
+    const mappedProductImages = new Map(
+      productImages.map((productImage) => [
+        productImage.product_id,
+        productImage,
+      ]),
+    );
+
+    return products.map((product) => {
+      const productVariant = mappedProductVariants.get(product.id);
+      const productVariantPricing = productVariant
+        ? mappedProductVariantPricing.get(productVariant.id)
+        : null;
+      const productImage = mappedProductImages.get(product.id);
+
+      return {
+        ...product,
+        image: productImage && {
+          id: productImage?.id,
+          image_url: productImage?.image_url,
+          is_primary: productImage?.is_primary,
+        },
+        product_pricing: productVariantPricing && {
+          id: productVariantPricing?.id,
+          selling_price: productVariantPricing?.selling_price,
+          crossed_price: productVariantPricing?.crossed_price,
+        },
+      };
+    });
+  }
+  /* get collections by slug */
+  async getCollectionsBySlug(slug: string) {
+    /* fetch the product-collection first and if not exists, throw an not fount exception */
+    const collection = await this.collectionRepository.findOne({
+      where: {
+        slug: slug,
+        status: StatusEnumType.Published,
+      },
+    });
+
+    if (!collection) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: [`collection with slug ${slug} not found!`],
+        error: 'Not Found',
+      });
+    }
+
+    const collectionRedirects = await this.collectionRedirectRepository.find({
+      where: {
+        collection_id: collection.id,
+      },
+    });
+
+    const redirectIds: string[] = collectionRedirects.map(
+      (redirect) => redirect.redirect_id,
+    );
+
+    const productsData = await Promise.all(
+      collectionRedirects.map(async (redirect) => {
+        const products: Product[] = [];
+
+        /* fetch product-related collections */
+        if (CollectionRedirectTypeEnum.Product === redirect.redirect_type) {
+          const collectionProduct = await this.productRepository.findOne({
+            where: {
+              id: In(redirectIds),
+              status: StatusEnumType.Published,
+            },
+            select: ['id', 'title', 'slug', 'category_id'],
+          });
+          if (collectionProduct) {
+            products.push(collectionProduct);
+          }
+        } else if (
+          /* fetch category-related collections */
+          CollectionRedirectTypeEnum.Category === redirect.redirect_type
+        ) {
+          const collectionProducts = await this.productRepository.find({
+            where: {
+              status: StatusEnumType.Published,
+              category_id: In(redirectIds),
+            },
+            select: ['id', 'title', 'slug', 'category_id'],
+          });
+
+          products.push(...collectionProducts);
+        }
+
+        const mappedProductsData = await this.getMappedProductData(products);
+        return mappedProductsData;
+      }),
+    );
+
+    return {
+      data: productsData.flat(),
+    };
+  }
+
+  /* portal services */
   async createCollection(collectionDto: CreateCollectionDto) {
     try {
       const collection = this.collectionRepository.create({

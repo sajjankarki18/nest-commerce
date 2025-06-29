@@ -22,6 +22,7 @@ export const seedData = async (dataSource: DataSource): Promise<void> => {
   await seedCategoriesData(dataSource);
   await seedProductsData(dataSource);
   await seedCollectionsData(dataSource);
+  await seedDeviceTypesData(dataSource);
 };
 
 /* seed banners */
@@ -314,12 +315,14 @@ const seedCollectionsData = async (datasource: DataSource) => {
 
   await seedCategoriesData(datasource);
 
+  const productsRepository = datasource.getRepository(Product);
   const collectionsRepository = datasource.getRepository(Collection);
   const categoriesRepository = datasource.getRepository(Category);
   const collectionRedirectRepository =
     datasource.getRepository(CollectionRedirect);
 
   const categories = await categoriesRepository.find();
+  const products = await productsRepository.find();
 
   const seedCollection = (): Collection => {
     const title = faker.lorem.words();
@@ -355,6 +358,7 @@ const seedCollectionsData = async (datasource: DataSource) => {
   /* loop through each collections and create a new collection-redirects */
   for (const collection of savedCollections) {
     const randomCategoryData = faker.helpers.arrayElement(categories);
+    const randomProductsData = faker.helpers.arrayElement(products);
 
     redirectsData.push(
       collectionRedirectRepository.create({
@@ -365,10 +369,12 @@ const seedCollectionsData = async (datasource: DataSource) => {
       collectionRedirectRepository.create({
         collection_id: collection.id,
         redirect_type: CollectionRedirectTypeEnum.Product,
-        redirect_id: faker.string.ulid(),
+        redirect_id: randomProductsData.id,
       }),
     );
   }
 
   return await collectionRedirectRepository.save(redirectsData);
 };
+
+const seedDeviceTypesData = async (dataSource: DataSource) => {};
