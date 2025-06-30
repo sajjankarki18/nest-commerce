@@ -162,38 +162,61 @@ export class CategoriesService {
     });
 
     /* fetch those products by category slug */
-    const productsData = await Promise.all(
-      products.map(async (product) => {
-        const product_variant = await this.productVariantRepository.findOne({
-          where: {
-            product_id: product?.id,
-          },
-        });
-
-        /* fetch product_pricing */
-        const product_pricing =
-          await this.productVariantPricingRepository.findOne({
-            where: {
-              variant_id: product_variant?.id,
-            },
-            select: ['id', 'selling_price', 'crossed_price'],
-          });
-
-        /* fetch product_images */
-        const product_image = await this.productImageRepository.findOne({
-          where: {
-            product_id: product?.id,
-          },
-          select: ['id', 'image_url', 'is_primary'],
-        });
-
-        return {
-          ...product,
-          pricing: product_pricing,
-          image: product_image,
-        };
-      }),
+    /* fetch product-variants */
+    const productVariants = await this.productVariantRepository.find({
+      where: {
+        product_id: In(products.map((product) => product.id)),
+      },
+    });
+    const mapProductVariants = new Map(
+      productVariants.map((variant) => [variant.product_id, variant]),
     );
+
+    /* fetch product-pricing */
+    const productVariantsPricing =
+      await this.productVariantPricingRepository.find({
+        where: {
+          variant_id: In(productVariants.map((variant) => variant.id)),
+        },
+      });
+    const mapProductVariantsPricing = new Map(
+      productVariantsPricing.map((variantPricing) => [
+        variantPricing.variant_id,
+        variantPricing,
+      ]),
+    );
+
+    /* fetch product-images */
+    const productImages = await this.productImageRepository.find({
+      where: {
+        product_id: In(products.map((product) => product.id)),
+      },
+    });
+    const mapProductImages = new Map(
+      productImages.map((image) => [image.product_id, image]),
+    );
+
+    const productsData = products.map((product) => {
+      const variant = mapProductVariants.get(product?.id);
+      const pricing = variant
+        ? mapProductVariantsPricing.get(variant?.id)
+        : null;
+      const image = mapProductImages.get(product?.id);
+
+      return {
+        ...product,
+        product_pricing: pricing && {
+          id: pricing?.id,
+          selling_price: pricing?.selling_price,
+          crossed_price: pricing?.crossed_price,
+        },
+        image: image && {
+          id: image?.id,
+          image_url: image?.image_url,
+          is_primary: image?.is_primary,
+        },
+      };
+    });
 
     return {
       data: productsData,

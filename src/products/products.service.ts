@@ -72,23 +72,20 @@ export class ProductService {
       },
     );
 
-    const productIds: string[] = products.map((product) => product.id);
-
     /* fetch product-variants */
     const variants = await this.productVariantRepository.find({
       where: {
-        product_id: In(productIds),
+        product_id: In(products.map((product) => product.id)),
       },
     });
     const mapVariants = new Map(
       variants.map((variant) => [variant.product_id, variant]),
     );
-    const variantIds: string[] = variants.map((variant) => variant.id);
 
     /* fetch product-pricing */
     const variantPricings = await this.productVariantPricingRepository.find({
       where: {
-        variant_id: In(variantIds),
+        variant_id: In(variants.map((variant) => variant.id)),
       },
     });
     const mapVariantPricing = new Map(
@@ -98,7 +95,7 @@ export class ProductService {
     /* fetch product-image */
     const productImages = await this.productImageRepository.find({
       where: {
-        product_id: In(productIds),
+        product_id: In(products.map((product) => product.id)),
       },
     });
     const mapImages = new Map(
