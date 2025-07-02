@@ -12,45 +12,43 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthUserAdminController = void 0;
+exports.CustomerAuthController = void 0;
 const common_1 = require("@nestjs/common");
-const auth_user_service_1 = require("./auth-user.service");
-const swagger_1 = require("@nestjs/swagger");
-const signin_user_dto_1 = require("./dto/signin-user.dto");
-const signup_user_dto_1 = require("./dto/signup-user.dto");
+const store_auth_service_1 = require("../store-auth/store-auth.service");
+const signup_customer_dto_1 = require("./dto/signup-customer.dto");
+const signin_customer_dto_1 = require("./dto/signin-customer.dto");
 const throttler_1 = require("@nestjs/throttler");
-let AuthUserAdminController = class AuthUserAdminController {
-    authUserService;
-    constructor(authUserService) {
-        this.authUserService = authUserService;
+let CustomerAuthController = class CustomerAuthController {
+    storeAuthService;
+    constructor(storeAuthService) {
+        this.storeAuthService = storeAuthService;
     }
-    signupUser(signupUserDto) {
-        return this.authUserService.signupUser(signupUserDto);
+    signup(signupCustomerDto) {
+        return this.storeAuthService.signup(signupCustomerDto);
     }
-    signinUser(siginUserDto) {
-        return this.authUserService.signinUser(siginUserDto);
+    signin(signinCustomerDto) {
+        return this.storeAuthService.signin(signinCustomerDto);
     }
 };
-exports.AuthUserAdminController = AuthUserAdminController;
+exports.CustomerAuthController = CustomerAuthController;
 __decorate([
     (0, throttler_1.Throttle)(10, 60),
     (0, common_1.Post)('/signup'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [signin_user_dto_1.SignupUserDto]),
+    __metadata("design:paramtypes", [signup_customer_dto_1.SignupCustomerDto]),
     __metadata("design:returntype", void 0)
-], AuthUserAdminController.prototype, "signupUser", null);
+], CustomerAuthController.prototype, "signup", null);
 __decorate([
     (0, throttler_1.Throttle)(5, 60),
     (0, common_1.Post)('/signin'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [signup_user_dto_1.SigninUserDto]),
+    __metadata("design:paramtypes", [signin_customer_dto_1.SigninCustomerDto]),
     __metadata("design:returntype", void 0)
-], AuthUserAdminController.prototype, "signinUser", null);
-exports.AuthUserAdminController = AuthUserAdminController = __decorate([
-    (0, swagger_1.ApiTags)('Autentication workflow'),
-    (0, common_1.Controller)('/admin/auth_user'),
-    __metadata("design:paramtypes", [auth_user_service_1.AuthUserService])
-], AuthUserAdminController);
-//# sourceMappingURL=auth-user.admin.controller.js.map
+], CustomerAuthController.prototype, "signin", null);
+exports.CustomerAuthController = CustomerAuthController = __decorate([
+    (0, common_1.Controller)('/account/customers'),
+    __metadata("design:paramtypes", [store_auth_service_1.StoreAuthService])
+], CustomerAuthController);
+//# sourceMappingURL=customers-auth.controller.js.map

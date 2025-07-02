@@ -26,6 +26,9 @@ const orders_module_1 = require("./orders/orders.module");
 const customers_module_1 = require("./customers/customers.module");
 const address_module_1 = require("./address/address.module");
 const discount_module_1 = require("./discount/discount.module");
+const core_1 = require("@nestjs/core");
+const throttler_1 = require("@nestjs/throttler");
+const customer_auth_middleware_1 = require("./middlewares/customer-auth.middleware");
 let AppModule = class AppModule {
     configure(consumer) {
         consumer
@@ -33,12 +36,21 @@ let AppModule = class AppModule {
             .exclude('/admin/auth_user/signin')
             .exclude('/admin/auth_user/signup')
             .forRoutes('/admin');
+        consumer
+            .apply(customer_auth_middleware_1.CustomerAuthMiddleware)
+            .exclude('/admin/auth_user/signin')
+            .exclude('/admin/auth_user/signup')
+            .forRoutes('/account');
     }
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            throttler_1.ThrottlerModule.forRoot({
+                ttl: 60,
+                limit: 10,
+            }),
             v1_module_1.V1Module,
             config_1.ConfigModule.forRoot({
                 isGlobal: true,
@@ -67,7 +79,11 @@ exports.AppModule = AppModule = __decorate([
             discount_module_1.DiscountModule,
         ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService, common_1.Logger],
+        providers: [
+            app_service_1.AppService,
+            common_1.Logger,
+            { provide: core_1.APP_GUARD, useClass: throttler_1.ThrottlerGuard },
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map
