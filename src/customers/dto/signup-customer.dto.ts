@@ -8,7 +8,7 @@ import {
 } from 'class-validator';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
 
-export class SignupUserDto {
+export class SignupCustomerDto {
   @IsNotEmpty({ message: 'username should not be empty!' })
   @IsString({ message: 'enter a valid username' })
   username: string;
@@ -21,9 +21,13 @@ export class SignupUserDto {
   @IsString()
   password: string;
 
+  @IsNotEmpty({ message: 'Please confirm your pasword!' })
+  @IsString()
+  confirm_password: string;
+
   @IsOptional()
   @IsNumber()
-  phone_number: number;
+  phone_number: string;
 
   @IsOptional()
   @IsEnum(StatusEnumType, {

@@ -8,6 +8,8 @@ import { ProductAdminController } from './products.admin.controller';
 import { ProductService } from './products.service';
 import { ProductImage } from './entities/product-image.entity';
 import { ProductController } from './products.controller';
+import { ProductQuestion } from './entities/product-question.dto';
+import { productAuthController } from './product-auth.controller';
 
 @Module({
   imports: [
@@ -17,9 +19,14 @@ import { ProductController } from './products.controller';
       ProductVariantPricing,
       ProductDescription,
       ProductImage,
+      ProductQuestion,
     ]),
   ],
-  controllers: [ProductAdminController, ProductController],
+  controllers: [
+    ProductAdminController,
+    ProductController,
+    productAuthController,
+  ],
   providers: [ProductService, Logger],
 })
 export class ProductsModule {}

@@ -1,6 +1,6 @@
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
-export class SigninUserDto {
+export class SigninCustomerDto {
   @IsNotEmpty({ message: 'Email should not be empty' })
   @IsEmail()
   email: string;

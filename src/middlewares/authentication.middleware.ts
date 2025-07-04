@@ -12,6 +12,10 @@ import { NextFunction, Request, Response } from 'express';
 interface CustomRequest extends Request {
   user?: any;
 }
+interface JwtPayload {
+  id: string;
+  email: string;
+}
 
 @Injectable()
 export class AuthenticationMiddleware implements NestMiddleware {
@@ -20,7 +24,7 @@ export class AuthenticationMiddleware implements NestMiddleware {
     private readonly configService: ConfigService,
     private readonly logger: Logger,
   ) {}
-  async use(req: CustomRequest, res: Response, next: NextFunction) {
+  use(req: CustomRequest, res: Response, next: NextFunction) {
     const authHeaders = req?.headers?.authorization;
     if (!authHeaders?.startsWith('Bearer ')) {
       this.logger.warn(`Invalid Bearer Token!`);
@@ -34,14 +38,13 @@ export class AuthenticationMiddleware implements NestMiddleware {
     const access_token = authHeaders.split(' ')[1];
     try {
       /* verify the access_token */
-      const decryptedToken = await this.jwtService.verify(access_token, {
+      const decryptedToken = this.jwtService.verify<JwtPayload>(access_token, {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
       req.user = decryptedToken;
       next();
     } catch (error) {
       this.logger.error(`session expired or invalid, please try again!`, error);
-      this.logger.error(`session expired or invalid, please try again later!`);
       throw new UnauthorizedException({
         statusCode: HttpStatus.UNAUTHORIZED,
         message: ['session expired or invalid, please try again later!'],

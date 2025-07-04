@@ -22,7 +22,6 @@ export const seedData = async (dataSource: DataSource): Promise<void> => {
   await seedCategoriesData(dataSource);
   await seedProductsData(dataSource);
   await seedCollectionsData(dataSource);
-  await seedDeviceTypesData(dataSource);
 };
 
 /* seed banners */
@@ -376,5 +375,3 @@ const seedCollectionsData = async (datasource: DataSource) => {
 
   return await collectionRedirectRepository.save(redirectsData);
 };
-
-const seedDeviceTypesData = async (dataSource: DataSource) => {};

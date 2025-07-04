@@ -30,6 +30,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.0",
+    "@nestjs/throttler": "2.x.x",
     "@nestjs/typeorm": "^11.0.0",
     "argon2": "^0.43.0",
     "class": "^0.1.4",
@@ -80,11 +81,11 @@
     "typescript-eslint": "^8.20.0"
   },
   "lint-staged": {
-  "*.{ts,js}": [
-    "eslint --fix",
-    "prettier --write"
-  ]
-},
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
   "jest": {
     "moduleFileExtensions": [
       "js",

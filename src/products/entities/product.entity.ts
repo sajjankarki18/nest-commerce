@@ -15,6 +15,7 @@ import {
 import { ProductVariant } from './product-variant.entity';
 import { ProductDescription } from './product-description.entity';
 import { ProductImage } from './product-image.entity';
+import { ProductQuestion } from './product-question.dto';
 
 @Entity({ name: 'product' })
 export class Product {
@@ -51,6 +52,12 @@ export class Product {
 
   @OneToMany(() => ProductImage, (product_image) => product_image.product)
   product_image: ProductImage[];
+
+  @OneToMany(
+    () => ProductQuestion,
+    (product_question) => product_question.product,
+  )
+  product_question: ProductQuestion[];
 
   @CreateDateColumn()
   created_at: Date;

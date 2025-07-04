@@ -17,9 +17,16 @@ import { OrdersModule } from './orders/orders.module';
 import { CustomersModule } from './customers/customers.module';
 import { AddressModule } from './address/address.module';
 import { DiscountModule } from './discount/discount.module';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { CustomerAuthMiddleware } from './middlewares/customer-auth.middleware';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      ttl: 60,
+      limit: 10,
+    }),
     V1Module,
     ConfigModule.forRoot({
       isGlobal: true,
@@ -48,7 +55,11 @@ import { DiscountModule } from './discount/discount.module';
     DiscountModule,
   ],
   controllers: [AppController],
-  providers: [AppService, Logger],
+  providers: [
+    AppService,
+    Logger,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
@@ -57,5 +68,11 @@ export class AppModule implements NestModule {
       .exclude('/admin/auth_user/signin')
       .exclude('/admin/auth_user/signup')
       .forRoutes('/admin');
+
+    consumer
+      .apply(CustomerAuthMiddleware)
+      .exclude('/account/customers/signup')
+      .exclude('/account/customers/signin')
+      .forRoutes('/account');
   }
 }

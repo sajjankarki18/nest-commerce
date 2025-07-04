@@ -11,8 +11,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AuthUser } from './entites/auth-user.entity';
 import { AuthUserRepository } from './repositories/auth-user.repository';
 import * as argon from 'argon2';
-import { SignupUserDto } from './dto/signin-user.dto';
-import { SigninUserDto } from './dto/signup-user.dto';
+import { SignupUserDto } from './dto/signup-user.dto';
+import { SigninUserDto } from './dto/signin-user.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 

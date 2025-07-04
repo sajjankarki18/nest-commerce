@@ -7,16 +7,18 @@ import {
   Post,
   Put,
   Query,
+  Req,
 } from '@nestjs/common';
 import { ProductService } from './products.service';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateProductDto } from './dto/product/create-product.dto';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
-import { CreateProductVariantDto } from './dto/create-productVariant.dto';
-import { UpdateProductVariantDto } from './dto/update-productVariant.dto';
-import { CreateProductDescriptionDto } from './dto/create-productDescription.dto';
-import { UpdateProductDescriptionDto } from './dto/update-productDescription.dto';
+import { CreateProductVariantDto } from './dto/product-variant/create-productVariant.dto';
+import { CreateProductDescriptionDto } from './dto/product-description/create-productDescription.dto';
+import { UpdateProductDto } from './dto/product/update-product.dto';
+import { UpdateProductVariantDto } from './dto/product-variant/update-productVariant.dto';
+import { UpdateProductDescriptionDto } from './dto/product-description/update-productDescription.dto';
+import { ReplyProductDto } from './dto/question/reply-productQuestion.dto';
 
 @ApiTags('Admin Products')
 @Controller('/admin/products')
@@ -104,5 +106,20 @@ export class ProductAdminController {
   @Delete('/product-description/:id')
   deleteProductDescription(@Param('id') id: string) {
     return this.productService.deleteProductDescription(id);
+  }
+
+  /* reply to the product-question given my the customers */
+  @Put('/reply/:productId')
+  replyQuestion(
+    @Param('productId') productId: string,
+    @Body() replyProductDto: ReplyProductDto,
+    @Req() req: { user: { userId: string } },
+  ) {
+    const admin_user_id: string = req.user?.userId;
+    return this.productService.replyQuestion(
+      productId,
+      replyProductDto,
+      admin_user_id,
+    );
   }
 }

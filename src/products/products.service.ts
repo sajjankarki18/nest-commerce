@@ -14,18 +14,22 @@ import { ProductVariant } from './entities/product-variant.entity';
 import { ProductVariantRepository } from './repositories/product-variant.repository';
 import { ProductDescriptionRepository } from './repositories/product-description.repository';
 import { ProductVariantPricing } from './entities/product-variantPricing.entity';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
+import { CreateProductDto } from './dto/product/create-product.dto';
 import slugify from 'slugify';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
 import { In } from 'typeorm';
-import { CreateProductVariantDto } from './dto/create-productVariant.dto';
-import { UpdateProductVariantDto } from './dto/update-productVariant.dto';
-import { CreateProductDescriptionDto } from './dto/create-productDescription.dto';
-import { UpdateProductDescriptionDto } from './dto/update-productDescription.dto';
+import { CreateProductVariantDto } from './dto/product-variant/create-productVariant.dto';
+import { CreateProductDescriptionDto } from './dto/product-description/create-productDescription.dto';
 import { ProductVariantPricingRepository } from './repositories/product-variantPricing.repository';
 import { ProductImage } from './entities/product-image.entity';
 import { ProductImageRepository } from './repositories/product-image.repository';
+import { UpdateProductDto } from './dto/product/update-product.dto';
+import { UpdateProductVariantDto } from './dto/product-variant/update-productVariant.dto';
+import { UpdateProductDescriptionDto } from './dto/product-description/update-productDescription.dto';
+import { ProductQuestion } from './entities/product-question.dto';
+import { ProductQuestionRepository } from './repositories/product-question.repository';
+import { AddProductQuestionDto } from './dto/question/add-productQuestion.dto';
+import { ReplyProductDto } from './dto/question/reply-productQuestion.dto';
 
 @Injectable()
 export class ProductService {
@@ -41,6 +45,8 @@ export class ProductService {
     private readonly productVariantPricingRepository: ProductVariantPricingRepository,
     @InjectRepository(ProductImage)
     private readonly productImageRepository: ProductImageRepository,
+    @InjectRepository(ProductQuestion)
+    private readonly productQuestionRepository: ProductQuestionRepository,
   ) {}
 
   /* product store-front services */
@@ -185,6 +191,106 @@ export class ProductService {
       variants: productVariants,
       images: productImages,
     };
+  }
+
+  /* add question service on store-front */
+  async addQuestion(
+    productId: string,
+    productQuestionDto: AddProductQuestionDto,
+    customerId: string,
+  ) {
+    /* check if the product exists */
+    await this.getProductById(productId);
+
+    try {
+      const question = this.productQuestionRepository.create({
+        question: productQuestionDto.question,
+        product_id: productId,
+        customer_id: customerId,
+      });
+
+      await this.productQuestionRepository.save(question);
+      return {
+        message: 'Your question has been posted successfully!',
+      };
+    } catch (error) {
+      this.logger.error('server error', error);
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: [
+          'some error occurred while adding a question, please try again later!',
+        ],
+        error: 'Internal Server Error',
+      });
+    }
+  }
+
+  /* get all questionfor the products */
+  async getAllQuestions({
+    page,
+    limit,
+  }: {
+    page: number;
+    limit: number;
+  }): Promise<{
+    data: ProductQuestion[];
+    page: number;
+    limit: number;
+    total: number;
+  }> {
+    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
+      throw new ConflictException({
+        statusCode: HttpStatus.CONFLICT,
+        message: ['page and limit should be of positive integers'],
+        error: 'Conflict',
+      });
+    }
+
+    const newLimit: number = limit > 10 ? 10 : limit;
+    const [questions, totalQuestions] =
+      await this.productQuestionRepository.findAndCount({
+        skip: (page - 1) * newLimit,
+        take: newLimit,
+        order: { created_at: 'desc' },
+      });
+
+    return {
+      data: questions,
+      page: page,
+      limit: limit,
+      total: totalQuestions,
+    };
+  }
+
+  /* reply service to reply to the product */
+  async replyQuestion(
+    productId: string,
+    replyProductDto: ReplyProductDto,
+    admin_user_id: string,
+  ) {
+    await this.getProductById(productId);
+    try {
+      await this.productQuestionRepository.update(
+        { product_id: productId },
+        {
+          answer: replyProductDto.reply,
+          admin_user_id: admin_user_id,
+        },
+      );
+
+      return {
+        message: 'Reply has been posted!',
+      };
+    } catch (error) {
+      this.logger.error('server error', error);
+      throw new InternalServerErrorException({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: [
+          'some error occurred while adding a reply, please try again later!',
+        ],
+        error: 'Internal Server Error',
+      });
+    }
   }
 
   /* product-routes */
