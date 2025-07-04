@@ -11,11 +11,13 @@ export class AuthUserAdminController {
   constructor(private readonly authUserService: AuthUserService) {}
 
   @Throttle(10, 60)
+  @Throttle(10, 60)
   @Post('/signup')
   signupUser(@Body() signupUserDto: SignupUserDto) {
     return this.authUserService.signupUser(signupUserDto);
   }
 
+  @Throttle(5, 60)
   @Throttle(5, 60)
   @Post('/signin')
   signinUser(@Body() siginUserDto: SigninUserDto) {

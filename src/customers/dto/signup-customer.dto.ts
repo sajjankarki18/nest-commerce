@@ -21,10 +21,13 @@ export class SignupCustomerDto {
   @IsString()
   password: string;
 
+<<<<<<< HEAD
   @IsNotEmpty({ message: 'Please confirm your pasword!' })
   @IsString()
   confirm_password: string;
 
+=======
+>>>>>>> origin
   @IsOptional()
   @IsNumber()
   phone_number: string;
