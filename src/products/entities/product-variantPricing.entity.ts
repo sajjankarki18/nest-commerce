@@ -26,12 +26,12 @@ export class ProductVariantPricing {
   @JoinColumn({ name: 'variant_id' })
   product_variant: ProductVariant;
 
-  @Column('numeric', { nullable: true, precision: 10, scale: 2 })
+  @Column({ type: 'numeric', nullable: true })
   price: number;
 
-  @Column('numeric', { nullable: true, precision: 10, scale: 2 })
+  @Column({ type: 'numeric', nullable: true })
   selling_price: number;
 
-  @Column('numeric', { nullable: true, precision: 10, scale: 2 })
+  @Column({ type: 'numeric', nullable: true })
   crossed_price: number;
 }
