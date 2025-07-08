@@ -22,7 +22,7 @@ import { StatusEnumType } from 'src/enums/StatusType.enum';
 import { In } from 'typeorm';
 
 const SHIPPING_PRICE: number = 100;
-const MAX_QUANTITY: number = 25;
+const MAX_QUANTITY: number = 50;
 
 @Injectable()
 export class CartService {
@@ -48,11 +48,38 @@ export class CartService {
   }
 
   /* validate the cart quantity -> Throw an exception when the quantity provided is more than 25 */
-  validateCartQuantity(cartItemDto: CreateCartItemDto): void {
+  async validateCartQuantity(cartItemDto: CreateCartItemDto) {
+    const variant = await this.productVariantRepository.findOne({
+      where: {
+        id: cartItemDto.variant_id,
+      },
+    });
+
+    if (!variant) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: [`Variant not found!`],
+        error: 'Not Found',
+      });
+    }
+
+    /* Check if user enters quantity that is more than the actual quantity exists in the DB */
+    if (cartItemDto.quantity > variant.quantity) {
+      throw new ConflictException({
+        statusCode: HttpStatus.CONFLICT,
+        message: [
+          `Requested quantity of ${cartItemDto.quantity} exeeds the availability of existing stock!`,
+        ],
+        error: 'Conflict',
+      });
+    }
+
+    /* check if the quantity exeeds the max_quantity and check,
+    if the user enter the quantity greatest than the quantity already exists */
     if (cartItemDto.quantity > MAX_QUANTITY) {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
-        message: ['You can only add upto 25 units of products in your cart!'],
+        message: ['You can only add upto 50 units of products in your cart!'],
         error: 'Conflict',
       });
     }
@@ -130,6 +157,7 @@ export class CartService {
       },
     });
 
+    /* if the product's variant is not currently in stock, just throw an exception */
     if (productVariant?.in_stock === false) {
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -147,6 +175,7 @@ export class CartService {
       await this.cartItemRepository.delete({
         variant_id: cartItemDto.variant_id,
       });
+
       return true;
     }
 
@@ -161,7 +190,7 @@ export class CartService {
       },
     });
     const cartItems = await this.cartItemRepository.find({
-      where: { cart_id: In([cart?.id]) },
+      where: { cart_id: cart?.id },
     });
 
     let total_price: number = 0;
@@ -177,7 +206,7 @@ export class CartService {
   /* add to cart logic */
   async cartActions(customerId: string, cartItemDto: CreateCartItemDto) {
     /* validate cart-quantity before creating the cart */
-    this.validateCartQuantity(cartItemDto);
+    await this.validateCartQuantity(cartItemDto);
 
     /* check if product-variant is in stock */
     await this.checkVariantInStock(cartItemDto);
@@ -202,7 +231,7 @@ export class CartService {
 
     /*
     case-1
-    If the cart does not exists, create a new cart for authenitcation user
+    If the cart does not exists, create a new cart for authenticated user
     */
     if (!existingCart) {
       /* create a new cart */
@@ -210,6 +239,7 @@ export class CartService {
         customer_id: customerId,
         shipping_price: SHIPPING_PRICE,
         total_price: 0,
+        sub_total: 0,
         cart_status: CartStatusEnum.Pending,
       });
 
@@ -232,7 +262,8 @@ export class CartService {
       await this.cartRepository.update(
         { id: savedCart.id },
         {
-          total_price: total_price,
+          sub_total: total_price,
+          total_price: total_price + SHIPPING_PRICE,
         },
       );
       return this.addToCartMessage(); /* add to cart message */
@@ -246,7 +277,9 @@ export class CartService {
     /* check weather the customer adds the same product, if he does then update the quantity of that product only */
     const variantsExists = await this.validateProductVariantExists(cartItemDto);
     if (variantsExists) {
-      return this.addToCartMessage();
+      return {
+        message: `Quantity has been updated`,
+      };
     }
 
     /* create a new cart-item */
@@ -260,9 +293,77 @@ export class CartService {
     });
 
     await this.cartItemRepository.save(newCartItem);
-    await this.calculateTotalCartPrice(
-      customerId,
-    ); /* calculate the total_price */
+    const total_price: number =
+      await this.calculateTotalCartPrice(
+        customerId,
+      ); /* calculate the total_price */
+
+    /* update the existing cart */
+    await this.cartRepository.update(
+      { customer_id: customerId },
+      {
+        sub_total: total_price,
+        total_price: total_price + SHIPPING_PRICE,
+      },
+    );
     return this.addToCartMessage();
+  }
+
+  /* cart checkout function */
+  async checkoutCart(cartId: string) {
+    /* list of payment_methods for a customer to pay for their products */
+    const payment_methods: string[] = [
+      'Esewa',
+      'khalti',
+      'Nabil Bank',
+      'Siddhartha Bank',
+      'Cash on Delivery',
+    ];
+
+    const cart = await this.cartRepository.findOne({
+      where: {
+        id: cartId,
+      },
+    });
+
+    /* if the cart is not found then throw an not-found exception */
+    if (!cart) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: [`Cart with ${cartId} not found!`],
+        error: 'Not Found',
+      });
+    }
+
+    /* fetch all cart_items(products) in the cart */
+    const cartItems = await this.cartItemRepository.find({
+      where: {
+        cart_id: In([cart.id]),
+      },
+    });
+
+    /* calculate the total price of the cart */
+    const total_price: number = await this.calculateTotalCartPrice(
+      cart?.customer_id,
+    );
+
+    /* update the cart-status as completed */
+    await this.cartRepository.update(
+      { id: cart?.id },
+      {
+        cart_status: CartStatusEnum.Completed,
+      },
+    );
+
+    return {
+      data: {
+        cart_id: cart?.id,
+        cart_status: cart?.cart_status,
+        payment_methods: payment_methods,
+        cart_items: cartItems,
+        shipping_fee: cart.shipping_price,
+        total: total_price,
+      },
+    };
   }
 }

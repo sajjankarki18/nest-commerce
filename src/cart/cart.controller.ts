@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Param, Post, Req } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CreateCartItemDto } from './dto/create-cartItem.dto';
 
@@ -6,6 +6,7 @@ import { CreateCartItemDto } from './dto/create-cartItem.dto';
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
+  /* add to cart */
   @Post('/add-to-cart')
   cartActions(
     @Req() customerReq: { user: { userId: string } },
@@ -13,5 +14,11 @@ export class CartController {
   ) {
     const customerId: string = customerReq.user?.userId;
     return this.cartService.cartActions(customerId, cartItemDto);
+  }
+
+  /* checkout cart */
+  @Post('/checkout/:cartId')
+  cehckoutCart(@Param('cartId') cartId: string) {
+    return this.cartService.checkoutCart(cartId);
   }
 }

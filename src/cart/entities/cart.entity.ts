@@ -25,6 +25,9 @@ export class Cart {
   shipping_price: number;
 
   @Column({ type: 'numeric', nullable: true })
+  sub_total: number;
+
+  @Column({ type: 'numeric', nullable: true })
   total_price: number;
 
   @OneToMany(() => CartItem, (cart_item) => cart_item.cart)
