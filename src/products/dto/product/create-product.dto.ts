@@ -1,8 +1,8 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
 
 export class CreateProductDto {
-  @IsOptional()
+  @IsNotEmpty()
   @IsString({ message: 'enter a valid product title!' })
   title: string;
 

@@ -27,9 +27,6 @@ export class ProductVariantPricing {
   product_variant: ProductVariant;
 
   @Column({ type: 'numeric', nullable: true })
-  price: number;
-
-  @Column({ type: 'numeric', nullable: true })
   selling_price: number;
 
   @Column({ type: 'numeric', nullable: true })

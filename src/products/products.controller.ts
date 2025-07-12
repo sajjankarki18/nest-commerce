@@ -14,9 +14,14 @@ export class ProductController {
     return this.productService.getAllProductsStoreFront({ page, limit });
   }
 
-  /* get products by slug */
+  /* get product-detail by slug */
   @Get('/:slug')
   getProductsBySlug(@Param('slug') slug: string) {
     return this.productService.getProductsBySlug(slug);
+  }
+
+  @Get('/similar-products/:slug')
+  getSimilarProducts(@Param('slug') slug: string) {
+    return this.productService.getSimilarProducts(slug);
   }
 }

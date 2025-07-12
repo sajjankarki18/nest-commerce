@@ -54,8 +54,8 @@ export class CategoriesAdminController {
     },
   })
   getAllCategories(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
     @Query('status') status?: StatusEnumType,
   ) {
     return this.categoriesService.getAllCategories({ page, limit, status });

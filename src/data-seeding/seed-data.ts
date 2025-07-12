@@ -296,7 +296,6 @@ const seedProductsData = async (dataSource: DataSource) => {
           CurrencyTypeEnum.USD,
         ]),
         variant_id: variant.id,
-        price: Number(faker.finance.amount({ min: 1000, max: 10000 })),
         selling_price: Number(faker.finance.amount({ min: 1000, max: 10000 })),
         crossed_price: Number(faker.finance.amount({ min: 1000, max: 10000 })),
       });

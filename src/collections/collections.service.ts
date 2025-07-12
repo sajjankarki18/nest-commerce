@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -188,7 +189,9 @@ export class CollectionsService {
   }
 
   /* portal services */
-  async createCollection(collectionDto: CreateCollectionDto) {
+  async createCollection(
+    collectionDto: CreateCollectionDto,
+  ): Promise<Collection | null> {
     try {
       const collection = this.collectionRepository.create({
         title: collectionDto.title,
@@ -250,15 +253,46 @@ export class CollectionsService {
     return collection;
   }
 
-  async getAllCollections(): Promise<{ data: Collection[]; total: number }> {
+  async getAllCollections({
+    page,
+    limit,
+  }: {
+    page: number;
+    limit: number;
+  }): Promise<{
+    data: Collection[];
+    page: number;
+    limit: number;
+    total: number;
+  }> {
     try {
-      const banners = await this.collectionRepository.find();
-      const totalBanners = banners.length;
+      if (
+        isNaN(Number(page)) ||
+        isNaN(Number(limit)) ||
+        page < 0 ||
+        limit < 0
+      ) {
+        throw new ConflictException({
+          statusCode: HttpStatus.NOT_FOUND,
+          message: ['page and limit should be of positive integers!'],
+          error: 'Conflict',
+        });
+      }
+
+      const newLimit: number = limit > 10 ? 10 : limit;
+      const [collections, totalCollections] =
+        await this.collectionRepository.findAndCount({
+          skip: (page - 1) * newLimit,
+          take: newLimit,
+          order: { created_at: 'desc' },
+        });
 
       this.logger.log('banners fetched successfully!');
       return {
-        data: banners,
-        total: totalBanners,
+        data: collections,
+        page: page,
+        limit: newLimit,
+        total: totalCollections,
       };
     } catch (error) {
       this.logger.error(

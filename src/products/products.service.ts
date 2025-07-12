@@ -129,6 +129,9 @@ export class ProductService {
       };
     });
 
+    this.logger.log(
+      `fetched all products-data and their related variant-pricing and images`,
+    );
     return {
       data: productsData,
       page: page,
@@ -187,9 +190,94 @@ export class ProductService {
     ]);
 
     return {
-      ...product,
-      variants: productVariants,
-      images: productImages,
+      data: {
+        ...product,
+        variants: productVariants,
+        images: productImages,
+      },
+    };
+  }
+
+  /* api to get similar products */
+  async getSimilarProducts(slug: string) {
+    const product = await this.productRepository.findOne({
+      where: {
+        slug: slug,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: [`Product with ${slug} not found!`],
+        error: 'Not Found',
+      });
+    }
+
+    const products = await this.productRepository.find({
+      where: {
+        category_id: product.category_id,
+      },
+      select: ['id', 'title', 'slug', 'status', 'category_id'],
+    });
+
+    /* fetch product-images using batch query */
+    const productImages = await this.productImageRepository.find({
+      where: {
+        product_id: In(products.map((product) => product.id)),
+        is_primary: true,
+      },
+    });
+    const productImageMap = new Map(
+      productImages.map((image) => [image.product_id, image]),
+    );
+
+    /* fetch product-variant */
+    const productVariants = await this.productVariantRepository.find({
+      where: {
+        product_id: In(products.map((product) => product.id)),
+      },
+    });
+    const productVariantsMap = new Map(
+      productVariants.map((variant) => [variant.product_id, variant]),
+    );
+
+    /* fetch related product-pricing */
+    const productVariantPricing =
+      await this.productVariantPricingRepository.find({
+        where: {
+          variant_id: In(productVariants.map((variant) => variant.id)),
+        },
+      });
+    const productVariantPricingMap = new Map(
+      productVariantPricing.map((pricing) => [pricing.variant_id, pricing]),
+    );
+
+    /* map through each products and fetch related image and variant-pricing */
+    const productsData = products.map((product) => {
+      const productImage = productImageMap.get(product?.id);
+      const productVariant = productVariantsMap.get(product?.id);
+      const productVariantPricing = productVariant
+        ? productVariantPricingMap.get(productVariant?.id)
+        : null;
+
+      return {
+        ...product,
+        image: productImage && {
+          id: productImage?.id,
+          image_url: productImage?.image_url,
+          is_primary: productImage?.is_primary,
+        },
+        pricing: productVariantPricing && {
+          id: productVariantPricing?.id,
+          selling_price: productVariantPricing?.selling_price,
+          crossed_price: productVariantPricing?.crossed_price,
+        },
+      };
+    });
+
+    return {
+      data: productsData,
     };
   }
 

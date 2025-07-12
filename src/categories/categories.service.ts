@@ -40,7 +40,7 @@ export class CategoriesService {
   ) {}
 
   /* store-front service to get all parent-categories to display at home page */
-  async getAllParentCategories() {
+  async getAllParentCategories(): Promise<{ data: Category[]; total: number }> {
     try {
       const [parentCategories, totalParentCategories] =
         await this.categoryRepository.findAndCount({
@@ -50,6 +50,7 @@ export class CategoriesService {
           },
         });
 
+      this.logger.log(`fetched all parent-categories`);
       return {
         data: parentCategories,
         total: totalParentCategories,
@@ -126,7 +127,10 @@ export class CategoriesService {
         data: categoriesData,
       };
     } catch (error) {
-      this.logger.log('server error occurred', error);
+      this.logger.log(
+        'error occurred while fetching category and their sub-categories',
+        error,
+      );
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
@@ -190,12 +194,14 @@ export class CategoriesService {
     const productImages = await this.productImageRepository.find({
       where: {
         product_id: In(products.map((product) => product.id)),
+        is_primary: true,
       },
     });
     const mapProductImages = new Map(
       productImages.map((image) => [image.product_id, image]),
     );
 
+    /* map through each products and fetch their related product_images and variants */
     const productsData = products.map((product) => {
       const variant = mapProductVariants.get(product?.id);
       const pricing = variant
@@ -262,7 +268,9 @@ export class CategoriesService {
   }
 
   /* create a new category */
-  async createCategory(categoryDto: CreateCategoryDto) {
+  async createCategory(
+    categoryDto: CreateCategoryDto,
+  ): Promise<Category | null> {
     try {
       const category = this.categoryRepository.create({
         parent_id: categoryDto.parent_id,
@@ -378,7 +386,10 @@ export class CategoriesService {
     return category;
   }
 
-  async updateCategory(id: string, categoryDto: UpdateCategoryDto) {
+  async updateCategory(
+    id: string,
+    categoryDto: UpdateCategoryDto,
+  ): Promise<Category | null> {
     const category = await this.getCategoryById(id);
 
     /* here comes the logic to update the limit the category heirarchy upto three levels */
@@ -410,7 +421,7 @@ export class CategoriesService {
   }
 
   /* delete a category */
-  async deleteCategory(id: string) {
+  async deleteCategory(id: string): Promise<{ id: string; message: string }> {
     const category = await this.getCategoryById(id);
 
     /* deletion logic for the parent-child heirachy */

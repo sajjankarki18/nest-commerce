@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CreateCartItemDto } from './dto/create-cartItem.dto';
 
@@ -18,7 +18,14 @@ export class CartController {
 
   /* checkout cart */
   @Post('/checkout/:cartId')
-  cehckoutCart(@Param('cartId') cartId: string) {
+  checkoutCart(@Param('cartId') cartId: string) {
     return this.cartService.checkoutCart(cartId);
+  }
+
+  /* get all carts for store */
+  @Get()
+  getAllCarts(@Req() customerReq: { user: { userId: string } }) {
+    const customerId: string = customerReq.user?.userId;
+    return this.cartService.getAllCarts(customerId);
   }
 }

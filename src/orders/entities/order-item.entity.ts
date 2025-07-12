@@ -5,10 +5,10 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Cart } from './cart.entity';
+import { Order } from './order.entity';
 
-@Entity({ name: 'cart_item' })
-export class CartItem {
+@Entity({ name: 'order_item' })
+export class OrderItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -24,16 +24,13 @@ export class CartItem {
   @Column({ nullable: true })
   quantity: number;
 
-  @Column({ type: 'numeric', nullable: true })
-  selling_price: number;
-
-  @Column({ type: 'numeric', nullable: true })
-  crossed_price: number;
-
   @Column({ nullable: true })
-  cart_id: string;
+  price: number;
 
-  @ManyToOne(() => Cart, (cart) => cart.cart_item)
-  @JoinColumn({ name: 'cart_id' })
-  cart: Cart;
+  @Column({ name: 'order_id' })
+  order_id: string;
+
+  @ManyToOne(() => Order, (order) => order.order_item)
+  @JoinColumn({ name: 'order_id' })
+  order: Order;
 }

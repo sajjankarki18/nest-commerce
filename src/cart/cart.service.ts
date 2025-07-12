@@ -22,7 +22,7 @@ import { StatusEnumType } from 'src/enums/StatusType.enum';
 import { In } from 'typeorm';
 
 const SHIPPING_PRICE: number = 100;
-const MAX_QUANTITY: number = 50;
+const MAX_QUANTITY: number = 10;
 
 @Injectable()
 export class CartService {
@@ -122,12 +122,6 @@ export class CartService {
       },
     });
 
-    const productVariant = await this.productVariantRepository.findOne({
-      where: {
-        product_id: product?.id,
-      },
-    });
-
     /* throw an exception if the product and it's variant not found */
     if (!product) {
       throw new NotFoundException({
@@ -139,7 +133,7 @@ export class CartService {
 
     const variantPricing = await this.productVariantPricingRepository.findOne({
       where: {
-        variant_id: productVariant?.id,
+        variant_id: cartItemDto?.variant_id,
       },
     });
 
@@ -196,7 +190,7 @@ export class CartService {
     let total_price: number = 0;
     /* calculate the total_price */
     for (const cartItem of cartItems) {
-      const cartPrice: number = cartItem.quantity * cartItem.price;
+      const cartPrice: number = cartItem.quantity * cartItem.selling_price;
       total_price += cartPrice;
     }
 
@@ -250,7 +244,8 @@ export class CartService {
         product_id: cartItemDto.product_id,
         variant_id: cartItemDto.variant_id,
         product_title: productDetails.product?.title,
-        price: productDetails.variantPricing?.selling_price,
+        selling_price: productDetails.variantPricing?.selling_price,
+        crossed_price: productDetails.variantPricing?.crossed_price,
         quantity: cartItemDto.quantity,
         cart_id: savedCart.id,
       });
@@ -287,7 +282,8 @@ export class CartService {
       product_id: cartItemDto.product_id,
       variant_id: cartItemDto.variant_id,
       product_title: productDetails.product?.title,
-      price: productDetails.variantPricing?.selling_price,
+      selling_price: productDetails.variantPricing?.selling_price,
+      crossed_price: productDetails.variantPricing?.crossed_price,
       quantity: cartItemDto.quantity,
       cart_id: existingCart.id,
     });
@@ -342,11 +338,6 @@ export class CartService {
       },
     });
 
-    /* calculate the total price of the cart */
-    const total_price: number = await this.calculateTotalCartPrice(
-      cart?.customer_id,
-    );
-
     /* update the cart-status as completed */
     await this.cartRepository.update(
       { id: cart?.id },
@@ -359,10 +350,57 @@ export class CartService {
       data: {
         cart_id: cart?.id,
         cart_status: cart?.cart_status,
+        created_at: cart.created_at.toISOString().split('T')[0],
         payment_methods: payment_methods,
         cart_items: cartItems,
         shipping_fee: cart.shipping_price,
-        total: total_price,
+        sub_total: parseFloat(Number(cart?.sub_total).toFixed(2)),
+        total: parseFloat(Number(cart?.total_price).toFixed(2)),
+      },
+    };
+  }
+
+  /* get all carts */
+  async getAllCarts(customerId: string) {
+    const cart = await this.cartRepository.findOne({
+      where: {
+        customer_id: customerId,
+      },
+      select: [
+        'id',
+        'customer_id',
+        'shipping_price',
+        'sub_total',
+        'total_price',
+      ],
+    });
+
+    if (!cart) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: ['No cart found associated with the customer!'],
+        error: 'Not Found',
+      });
+    }
+
+    const cartItems = await this.cartItemRepository.find({
+      where: {
+        cart_id: cart.id,
+      },
+      select: [
+        'id',
+        'product_id',
+        'variant_id',
+        'selling_price',
+        'crossed_price',
+        'quantity',
+      ],
+    });
+
+    return {
+      data: {
+        ...cart,
+        cart_items: cartItems,
       },
     };
   }

@@ -91,6 +91,7 @@ export class BannerService {
       });
     }
 
+    this.logger.log(`Banners with redirects has been fetched successfully!`);
     return {
       data: bannerRedirectData,
     };
@@ -226,7 +227,10 @@ export class BannerService {
     }
   }
 
-  async updateBanner(id: string, bannerDto: UpdateBannerDto) {
+  async updateBanner(
+    id: string,
+    bannerDto: UpdateBannerDto,
+  ): Promise<Banner | null> {
     await this.validateBannerRedirectTypes(bannerDto);
     await this.getBannerById(id);
     try {
@@ -261,7 +265,7 @@ export class BannerService {
     }
   }
 
-  async deleteBanner(id: string) {
+  async deleteBanner(id: string): Promise<{ id: string; message: string }> {
     await this.getBannerById(id);
 
     try {

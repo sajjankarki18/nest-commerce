@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { CollectionsService } from './collections.service';
 import {
@@ -62,8 +63,11 @@ export class CollectionsAdminController {
       },
     },
   })
-  getAllCollections() {
-    return this.collectionsService.getAllCollections();
+  getAllCollections(
+    @Query('page') page: number,
+    @Query('limit') limit: number,
+  ) {
+    return this.collectionsService.getAllCollections({ page, limit });
   }
 
   /* update a collection  */
