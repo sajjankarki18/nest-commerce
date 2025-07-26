@@ -3,6 +3,7 @@ import {
   ConflictException,
   HttpStatus,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,6 +21,8 @@ import { ProductVariantPricing } from 'src/products/entities/product-variantPric
 import { ProductVariantPricingRepository } from 'src/products/repositories/product-variantPricing.repository';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
 import { In } from 'typeorm';
+import { ProductImage } from 'src/products/entities/product-image.entity';
+import { ProductImageRepository } from 'src/products/repositories/product-image.repository';
 
 const SHIPPING_PRICE: number = 100;
 const MAX_QUANTITY: number = 10;
@@ -37,18 +40,22 @@ export class CartService {
     private readonly productVariantRepository: ProductVariantRepository,
     @InjectRepository(ProductVariantPricing)
     private readonly productVariantPricingRepository: ProductVariantPricingRepository,
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: ProductImageRepository,
+    private readonly logger: Logger,
   ) {}
 
-  /* re-usable function to display add-to-cart message,
-   when an item has been added to cart */
   addToCartMessage(): { message: string } {
+    this.logger.log('Item has been added to cart.');
     return {
       message: `Item has been added to cart!`,
     };
   }
 
-  /* validate the cart quantity -> Throw an exception when the quantity provided is more than 25 */
   async validateCartQuantity(cartItemDto: CreateCartItemDto) {
+    this.logger.log(
+      `Validating cart quantity for variant_id: ${cartItemDto.variant_id}`,
+    );
     const variant = await this.productVariantRepository.findOne({
       where: {
         id: cartItemDto.variant_id,
@@ -56,6 +63,7 @@ export class CartService {
     });
 
     if (!variant) {
+      this.logger.warn('Variant not found.');
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
         message: [`Variant not found!`],
@@ -63,8 +71,10 @@ export class CartService {
       });
     }
 
-    /* Check if user enters quantity that is more than the actual quantity exists in the DB */
     if (cartItemDto.quantity > variant.quantity) {
+      this.logger.warn(
+        'Requested quantity exeeds the availability of existing stock.',
+      );
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
         message: [
@@ -74,25 +84,25 @@ export class CartService {
       });
     }
 
-    /* check if the quantity exeeds the max_quantity and check,
-    if the user enter the quantity greatest than the quantity already exists */
     if (cartItemDto.quantity > MAX_QUANTITY) {
+      this.logger.warn(
+        'You can add only upto 50 units of products in your cart.',
+      );
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
         message: ['You can only add upto 50 units of products in your cart!'],
         error: 'Conflict',
       });
     }
+    this.logger.log('Cart quantity validated successfully.');
   }
 
-  /* 
-  check if customer has added the same product that already exists in cart,
-  if it does exists, then update the quantity only. 
-  or else create a new cart-item for that product.
-  */
   async validateProductVariantExists(
     cartItemDto: CreateCartItemDto,
   ): Promise<boolean> {
+    this.logger.log(
+      `Checking if product variant exists in cart for variant_id: ${cartItemDto.variant_id}`,
+    );
     const cartItemExists = await this.cartItemRepository.findOne({
       where: {
         variant_id: cartItemDto.variant_id,
@@ -100,84 +110,104 @@ export class CartService {
     });
 
     if (cartItemExists) {
+      this.logger.log(
+        'Product variant already exists in cart. Updating quantity.',
+      );
       await this.cartItemRepository.update(
         { variant_id: cartItemDto.variant_id },
         {
           quantity: cartItemDto.quantity,
         },
       );
-
       return true;
     }
 
+    this.logger.log('Product variant does not exist in cart.');
     return false;
   }
 
-  /* fetch product-details to display at frontend */
   async getProductDetails(cartItemDto: CreateCartItemDto) {
-    const product = await this.productRepository.findOne({
-      where: {
-        id: cartItemDto.product_id,
-        status: StatusEnumType.Published,
-      },
-    });
+    this.logger.log(
+      `Fetching product details for product_id: ${cartItemDto.product_id}, variant_id: ${cartItemDto.variant_id}`,
+    );
+    const [product, variantPricing] = await Promise.all([
+      await this.productRepository.findOne({
+        where: {
+          id: cartItemDto?.product_id,
+          status: StatusEnumType?.Published,
+        },
+      }),
+      await this.productVariantPricingRepository.findOne({
+        where: {
+          variant_id: cartItemDto?.variant_id,
+        },
+      }),
+    ]);
 
-    /* throw an exception if the product and it's variant not found */
     if (!product) {
+      this.logger.warn('Product not found.');
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
-        message: [`product and it's variant not found, please try again!`],
+        message: [`Product with ${cartItemDto?.product_id} not found!`],
         error: 'Not Found',
       });
     }
 
-    const variantPricing = await this.productVariantPricingRepository.findOne({
-      where: {
-        variant_id: cartItemDto?.variant_id,
-      },
-    });
+    if (!variantPricing) {
+      this.logger.warn('Variant pricing not found.');
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: [
+          `ProductVariantPricing with ${cartItemDto?.variant_id} not found!`,
+        ],
+        error: 'Not Found',
+      });
+    }
 
+    this.logger.log('Product details fetched successfully.');
     return {
       product: product,
       variantPricing: variantPricing,
     };
   }
 
-  /* validate weather the products-variant is in stock */
   async checkVariantInStock(cartItemDto: CreateCartItemDto) {
+    this.logger.log(`Checking stock for variant_id: ${cartItemDto.variant_id}`);
     const productVariant = await this.productVariantRepository.findOne({
       where: {
         id: cartItemDto.variant_id,
       },
     });
 
-    /* if the product's variant is not currently in stock, just throw an exception */
     if (productVariant?.in_stock === false) {
+      this.logger.warn('The variant is not currently in stock.');
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
         message: [`The variant is not currently in stock!`],
         error: 'Bad Request',
       });
     }
-
+    this.logger.log('Variant is in stock.');
     return;
   }
 
-  /* if the quantity is given as 0, then directly remove the item from the cart */
   async removeCart(cartItemDto: CreateCartItemDto): Promise<boolean> {
     if (cartItemDto.quantity <= 0) {
+      this.logger.log(
+        `Removing cart item for variant_id: ${cartItemDto.variant_id}`,
+      );
       await this.cartItemRepository.delete({
         variant_id: cartItemDto.variant_id,
       });
-
       return true;
     }
-
     return false;
   }
 
-  /* calucate total-cost of all cart */
   async calculateTotalCartPrice(customerId: string): Promise<number> {
+    this.logger.log(
+      `Calculating total cart price for customer_id: ${customerId}`,
+    );
     const cart = await this.cartRepository.findOne({
       where: {
         customer_id: customerId,
@@ -188,47 +218,38 @@ export class CartService {
     });
 
     let total_price: number = 0;
-    /* calculate the total_price */
     for (const cartItem of cartItems) {
       const cartPrice: number = cartItem.quantity * cartItem.selling_price;
       total_price += cartPrice;
     }
-
+    this.logger.log(`Total cart price calculated: ${total_price}`);
     return total_price;
   }
 
-  /* add to cart logic */
   async cartActions(customerId: string, cartItemDto: CreateCartItemDto) {
-    /* validate cart-quantity before creating the cart */
+    this.logger.log(
+      `Performing cart actions for customer_id: ${customerId}, product_id: ${cartItemDto.product_id}`,
+    );
     await this.validateCartQuantity(cartItemDto);
-
-    /* check if product-variant is in stock */
     await this.checkVariantInStock(cartItemDto);
-
-    /* fetch related product and variant-pricing details */
     const productDetails = await this.getProductDetails(cartItemDto);
 
-    /* remove the item from the cart if the quantity is given as 0 */
     const checkCartRemoved = await this.removeCart(cartItemDto);
     if (checkCartRemoved) {
+      this.logger.log('Product has been removed from cart.');
       return {
-        message: 'Product has been removed successfully',
+        message: 'Product has been removed from cart',
       };
     }
 
-    /* check if the cart exists, if it's your first time adding an item to your cart */
     const existingCart = await this.cartRepository.findOne({
       where: {
         customer_id: customerId,
       },
     });
 
-    /*
-    case-1
-    If the cart does not exists, create a new cart for authenticated user
-    */
     if (!existingCart) {
-      /* create a new cart */
+      this.logger.log('No existing cart found. Creating new cart.');
       const cart = this.cartRepository.create({
         customer_id: customerId,
         shipping_price: SHIPPING_PRICE,
@@ -239,7 +260,6 @@ export class CartService {
 
       const savedCart = await this.cartRepository.save(cart);
 
-      /* create new cart-item with saved cart */
       const cartItem = this.cartItemRepository.create({
         product_id: cartItemDto.product_id,
         variant_id: cartItemDto.variant_id,
@@ -252,7 +272,6 @@ export class CartService {
 
       await this.cartItemRepository.save(cartItem);
 
-      /* calculate total_price and update the total on cart */
       const total_price = await this.calculateTotalCartPrice(customerId);
       await this.cartRepository.update(
         { id: savedCart.id },
@@ -261,23 +280,19 @@ export class CartService {
           total_price: total_price + SHIPPING_PRICE,
         },
       );
-      return this.addToCartMessage(); /* add to cart message */
+      this.logger.log('New cart and cart item created successfully.');
+      return this.addToCartMessage();
     }
 
-    /*
-    case-2
-    if the cart already exists, then add new items with that associated cart
-    */
-
-    /* check weather the customer adds the same product, if he does then update the quantity of that product only */
     const variantsExists = await this.validateProductVariantExists(cartItemDto);
     if (variantsExists) {
+      this.logger.log('Quantity has been updated.');
       return {
         message: `Quantity has been updated`,
       };
     }
 
-    /* create a new cart-item */
+    this.logger.log('Adding new cart item to existing cart.');
     const newCartItem = this.cartItemRepository.create({
       product_id: cartItemDto.product_id,
       variant_id: cartItemDto.variant_id,
@@ -289,12 +304,8 @@ export class CartService {
     });
 
     await this.cartItemRepository.save(newCartItem);
-    const total_price: number =
-      await this.calculateTotalCartPrice(
-        customerId,
-      ); /* calculate the total_price */
+    const total_price: number = await this.calculateTotalCartPrice(customerId);
 
-    /* update the existing cart */
     await this.cartRepository.update(
       { customer_id: customerId },
       {
@@ -302,12 +313,41 @@ export class CartService {
         total_price: total_price + SHIPPING_PRICE,
       },
     );
+    this.logger.log('Cart item added and cart updated successfully.');
     return this.addToCartMessage();
   }
 
-  /* cart checkout function */
-  async checkoutCart(cartId: string) {
-    /* list of payment_methods for a customer to pay for their products */
+  async findCustomerCart(
+    cartId: string,
+    customerId: string,
+    cartStatus?: CartStatusEnum,
+  ) {
+    this.logger.log(
+      `Finding cart for cart_id: ${cartId}, customer_id: ${customerId}, cart_status: ${cartStatus}`,
+    );
+    const cart = await this.cartRepository.findOne({
+      where: {
+        id: cartId,
+        customer_id: customerId,
+        cart_status: cartStatus,
+      },
+    });
+
+    if (!cart) {
+      this.logger.warn('Cart associated with the customer not found.');
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: [`Cart with ${cartId} not found!`],
+        error: 'Not Found',
+      });
+    }
+
+    this.logger.log('Cart found successfully.');
+    return cart;
+  }
+
+  fetchPaymentInformation() {
+    this.logger.log('Fetching payment information.');
     const payment_methods: string[] = [
       'Esewa',
       'khalti',
@@ -316,55 +356,133 @@ export class CartService {
       'Cash on Delivery',
     ];
 
-    const cart = await this.cartRepository.findOne({
-      where: {
-        id: cartId,
-      },
-    });
+    return payment_methods;
+  }
 
-    /* if the cart is not found then throw an not-found exception */
-    if (!cart) {
-      throw new NotFoundException({
-        statusCode: HttpStatus.NOT_FOUND,
-        message: [`Cart with ${cartId} not found!`],
-        error: 'Not Found',
-      });
-    }
+  async checkoutCart(cartId: string, customerId: string) {
+    this.logger.log(
+      `Checking out cart for cart_id: ${cartId}, customer_id: ${customerId}`,
+    );
+    const payment_methods: string[] = this.fetchPaymentInformation();
 
-    /* fetch all cart_items(products) in the cart */
+    const customerCart = await this.findCustomerCart(cartId, customerId);
+
     const cartItems = await this.cartItemRepository.find({
       where: {
-        cart_id: In([cart.id]),
+        cart_id: customerCart.id,
       },
     });
 
-    /* update the cart-status as completed */
     await this.cartRepository.update(
-      { id: cart?.id },
+      { id: customerCart?.id },
       {
-        cart_status: CartStatusEnum.Completed,
+        cart_status: CartStatusEnum.Processing,
       },
     );
 
+    const processedCustomerCart = await this.findCustomerCart(
+      cartId,
+      customerId,
+    );
+
+    this.logger.log('Cart checked out and status updated to processing.');
     return {
       data: {
-        cart_id: cart?.id,
-        cart_status: cart?.cart_status,
-        created_at: cart.created_at.toISOString().split('T')[0],
+        cart_id: processedCustomerCart?.id,
+        cart_status: processedCustomerCart?.cart_status,
+        created_at: processedCustomerCart.created_at
+          .toISOString()
+          .split('T')[0],
         payment_methods: payment_methods,
         cart_items: cartItems,
-        shipping_fee: cart.shipping_price,
-        sub_total: parseFloat(Number(cart?.sub_total).toFixed(2)),
-        total: parseFloat(Number(cart?.total_price).toFixed(2)),
+        shipping_fee: processedCustomerCart.shipping_price,
+        sub_total: processedCustomerCart?.sub_total,
+        total: processedCustomerCart?.total_price,
       },
     };
   }
 
-  /* get all carts */
+  async fetchCartItemsWithImages(cartId: string, customerId: string) {
+    this.logger.log(
+      `Fetching cart items with images for cart_id: ${cartId}, customer_id: ${customerId}`,
+    );
+    const customerCart = await this.findCustomerCart(cartId, customerId);
+
+    const cartItems = await this.cartItemRepository.find({
+      where: {
+        cart_id: customerCart?.id,
+      },
+    });
+
+    const productIds: string[] = [
+      ...new Set(cartItems.map((cartItem) => cartItem.product_id)),
+    ];
+
+    const productImages = await this.productImageRepository.find({
+      where: {
+        product_id: In(productIds),
+        is_primary: true,
+      },
+    });
+
+    this.logger.log(
+      `Fetched ${productImages.length} product images for cart items.`,
+    );
+
+    const productImagesMap = new Map(
+      productImages.map((image) => [image.product_id, image]),
+    );
+
+    const cartItemsWithImages = cartItems.map((cartItem) => {
+      const productImage = productImagesMap.get(cartItem.product_id);
+      return {
+        ...cartItem,
+        image_url: productImage?.image_url,
+      };
+    });
+
+    this.logger.log('Cart items with images fetched successfully.');
+    return cartItemsWithImages;
+  }
+
+  async getCheckoutCartDetails(cartId: string, customerId: string) {
+    this.logger.log(
+      `Getting checkout cart details for cart_id: ${cartId}, customer_id: ${customerId}`,
+    );
+    const payment_methods: string[] = this.fetchPaymentInformation();
+
+    const customerCart = await this.findCustomerCart(
+      cartId,
+      customerId,
+      CartStatusEnum.Processing,
+    );
+
+    const cartItemsWithImages = await this.fetchCartItemsWithImages(
+      cartId,
+      customerId,
+    );
+
+    this.logger.log('Checkout cart details fetched successfully.');
+    return {
+      data: {
+        cart_id: customerCart?.id,
+        cart_status: customerCart?.cart_status,
+        created_at: customerCart.created_at.toISOString().split('T')[0],
+        payment_methods: payment_methods,
+        cart_items: cartItemsWithImages,
+        shipping_fee: customerCart.shipping_price,
+        sub_total: customerCart?.sub_total,
+        total: customerCart?.total_price,
+      },
+    };
+  }
+
   async getAllCarts(customerId: string) {
+    this.logger.log(`Getting all carts for customer_id: ${customerId}`);
     const cart = await this.cartRepository.findOne({
       where: {
         customer_id: customerId,
+        cart_status: CartStatusEnum.Pending,
       },
       select: [
         'id',
@@ -376,6 +494,7 @@ export class CartService {
     });
 
     if (!cart) {
+      this.logger.log('Cart associated with the customer not found');
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
         message: ['No cart found associated with the customer!'],
@@ -383,24 +502,16 @@ export class CartService {
       });
     }
 
-    const cartItems = await this.cartItemRepository.find({
-      where: {
-        cart_id: cart.id,
-      },
-      select: [
-        'id',
-        'product_id',
-        'variant_id',
-        'selling_price',
-        'crossed_price',
-        'quantity',
-      ],
-    });
+    const cartItemsWithImages = await this.fetchCartItemsWithImages(
+      cart?.id,
+      customerId,
+    );
 
+    this.logger.log('All carts fetched successfully.');
     return {
       data: {
         ...cart,
-        cart_items: cartItems,
+        cart_items: cartItemsWithImages,
       },
     };
   }
