@@ -52,6 +52,7 @@ export class CartService {
     };
   }
 
+  /* helper function to validate cart-quantity */
   async validateCartQuantity(cartItemDto: CreateCartItemDto) {
     this.logger.log(
       `Validating cart quantity for variant_id: ${cartItemDto.variant_id}`,
@@ -97,6 +98,7 @@ export class CartService {
     this.logger.log('Cart quantity validated successfully.');
   }
 
+  /* check if the product and it's variant exists */
   async validateProductVariantExists(
     cartItemDto: CreateCartItemDto,
   ): Promise<boolean> {
@@ -126,6 +128,7 @@ export class CartService {
     return false;
   }
 
+  /* get product-details */
   async getProductDetails(cartItemDto: CreateCartItemDto) {
     this.logger.log(
       `Fetching product details for product_id: ${cartItemDto.product_id}, variant_id: ${cartItemDto.variant_id}`,
@@ -171,6 +174,7 @@ export class CartService {
     };
   }
 
+  /* check if the variant in stock */
   async checkVariantInStock(cartItemDto: CreateCartItemDto) {
     this.logger.log(`Checking stock for variant_id: ${cartItemDto.variant_id}`);
     const productVariant = await this.productVariantRepository.findOne({
@@ -191,6 +195,7 @@ export class CartService {
     return;
   }
 
+  /* remove the item from the cart */
   async removeCart(cartItemDto: CreateCartItemDto): Promise<boolean> {
     if (cartItemDto.quantity <= 0) {
       this.logger.log(
@@ -204,6 +209,7 @@ export class CartService {
     return false;
   }
 
+  /* calculate the total_cart_price */
   async calculateTotalCartPrice(customerId: string): Promise<number> {
     this.logger.log(
       `Calculating total cart price for customer_id: ${customerId}`,
@@ -226,6 +232,7 @@ export class CartService {
     return total_price;
   }
 
+  /* add-to-cart logic */
   async cartActions(customerId: string, cartItemDto: CreateCartItemDto) {
     this.logger.log(
       `Performing cart actions for customer_id: ${customerId}, product_id: ${cartItemDto.product_id}`,
@@ -317,6 +324,7 @@ export class CartService {
     return this.addToCartMessage();
   }
 
+  /* find the cart associated with the customer */
   async findCustomerCart(
     cartId: string,
     customerId: string,
@@ -346,6 +354,7 @@ export class CartService {
     return cart;
   }
 
+  /* fetch payment information */
   fetchPaymentInformation() {
     this.logger.log('Fetching payment information.');
     const payment_methods: string[] = [
@@ -359,6 +368,7 @@ export class CartService {
     return payment_methods;
   }
 
+  /* checkout cart service when user adds items to the cart */
   async checkoutCart(cartId: string, customerId: string) {
     this.logger.log(
       `Checking out cart for cart_id: ${cartId}, customer_id: ${customerId}`,
@@ -402,6 +412,7 @@ export class CartService {
     };
   }
 
+  /* helper function to fetch cart_items with images */
   async fetchCartItemsWithImages(cartId: string, customerId: string) {
     this.logger.log(
       `Fetching cart items with images for cart_id: ${cartId}, customer_id: ${customerId}`,
@@ -445,6 +456,7 @@ export class CartService {
     return cartItemsWithImages;
   }
 
+  /* fetch checkout cart-details */
   async getCheckoutCartDetails(cartId: string, customerId: string) {
     this.logger.log(
       `Getting checkout cart details for cart_id: ${cartId}, customer_id: ${customerId}`,
@@ -477,6 +489,7 @@ export class CartService {
     };
   }
 
+  /* fetch all carts associated with the user */
   async getAllCarts(customerId: string) {
     this.logger.log(`Getting all carts for customer_id: ${customerId}`);
     const cart = await this.cartRepository.findOne({

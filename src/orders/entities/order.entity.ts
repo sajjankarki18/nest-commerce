@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
+import { OrderStatusEnum } from 'src/enums/order-status.enum';
 
 @Entity({ name: 'order' })
 export class Order {
@@ -26,13 +27,22 @@ export class Order {
   cart_id: string;
 
   @Column({ nullable: true })
-  order_status: string;
+  order_status: OrderStatusEnum;
 
   @Column({ nullable: true })
   payment_status: string;
 
   @Column({ nullable: true })
   payment_method: string;
+
+  @Column({ nullable: true })
+  shipping_price: number;
+
+  @Column({ type: 'numeric', nullable: true })
+  sub_total: number;
+
+  @Column({ type: 'numeric', nullable: true })
+  total_price: number;
 
   @ManyToOne(() => OrderItem, (order_item) => order_item.order)
   order_item: OrderItem[];

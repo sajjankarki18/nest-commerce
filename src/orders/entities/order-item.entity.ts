@@ -24,8 +24,11 @@ export class OrderItem {
   @Column({ nullable: true })
   quantity: number;
 
-  @Column({ nullable: true })
-  price: number;
+  @Column({ type: 'numeric', nullable: true })
+  selling_price: number;
+
+  @Column({ type: 'numeric', nullable: true })
+  crossed_price: number;
 
   @Column({ name: 'order_id' })
   order_id: string;
