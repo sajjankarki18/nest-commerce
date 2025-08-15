@@ -34,6 +34,9 @@ export class Product {
   @Column({ nullable: true, default: StatusEnumType.Draft })
   status: StatusEnumType;
 
+  @Column({ nullable: true })
+  in_stock: boolean;
+
   @OneToMany(() => ProductVariant, (product_variant) => product_variant.product)
   product_variant: ProductVariant[];
 

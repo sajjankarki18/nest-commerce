@@ -10,6 +10,7 @@ import { ProductImage } from './entities/product-image.entity';
 import { ProductController } from './products.controller';
 import { ProductQuestion } from './entities/product-question.dto';
 import { productAuthController } from './product-auth.controller';
+import { ProductHelperService } from './product-helper.service';
 
 @Module({
   imports: [
@@ -27,6 +28,6 @@ import { productAuthController } from './product-auth.controller';
     ProductController,
     productAuthController,
   ],
-  providers: [ProductService, Logger],
+  providers: [ProductService, ProductHelperService, Logger],
 })
 export class ProductsModule {}

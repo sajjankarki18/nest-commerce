@@ -24,8 +24,8 @@ export class ProductVariant {
   @Column({ nullable: true })
   quantity: number;
 
-  @Column({ nullable: true, default: false })
-  in_stock: boolean;
+  @Column({ nullable: true })
+  is_availability: boolean;
 
   @Column({ nullable: true, default: SizeEnum.S })
   size: SizeEnum;

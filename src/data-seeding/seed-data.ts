@@ -219,6 +219,7 @@ const seedProductsData = async (dataSource: DataSource) => {
         StatusEnumType.Published,
         StatusEnumType.Draft,
       ]),
+      in_stock: faker.helpers.arrayElement([true, false]),
       category_id: category.id,
     });
     await productRepository.save(products);
@@ -274,7 +275,7 @@ const seedProductsData = async (dataSource: DataSource) => {
         size: size,
         color: color,
         quantity: faker.number.int({ min: 1, max: 50 }),
-        in_stock: true,
+        is_availability: faker.helpers.arrayElement([true, false]),
         product_sku: faker.lorem.slug(),
         product_id: product.id,
       });

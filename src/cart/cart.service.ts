@@ -183,7 +183,7 @@ export class CartService {
       },
     });
 
-    if (productVariant?.in_stock === false) {
+    if (productVariant?.is_availability === false) {
       this.logger.warn('The variant is not currently in stock.');
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,

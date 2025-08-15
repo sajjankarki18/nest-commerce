@@ -30,11 +30,13 @@ import { ProductQuestion } from './entities/product-question.dto';
 import { ProductQuestionRepository } from './repositories/product-question.repository';
 import { AddProductQuestionDto } from './dto/question/add-productQuestion.dto';
 import { ReplyProductDto } from './dto/question/reply-productQuestion.dto';
+import { ProductHelperService } from './product-helper.service';
 
 @Injectable()
 export class ProductService {
   constructor(
     private readonly logger: Logger,
+    private readonly productHelperService: ProductHelperService,
     @InjectRepository(Product)
     private readonly productRepository: ProductRepository,
     @InjectRepository(ProductDescription)
@@ -57,7 +59,7 @@ export class ProductService {
     page: number;
     limit: number;
   }): Promise<{ data: Product[]; page: number; limit: number; total: number }> {
-    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
+    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 1 || limit < 1) {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
         message: ['Page and limit should be of positive integers!'],
@@ -78,62 +80,16 @@ export class ProductService {
       },
     );
 
-    /* fetch product-variants */
-    const variants = await this.productVariantRepository.find({
-      where: {
-        product_id: In(products.map((product) => product.id)),
-      },
-    });
-    const mapVariants = new Map(
-      variants.map((variant) => [variant.product_id, variant]),
-    );
-
-    /* fetch product-pricing */
-    const variantPricings = await this.productVariantPricingRepository.find({
-      where: {
-        variant_id: In(variants.map((variant) => variant.id)),
-      },
-    });
-    const mapVariantPricing = new Map(
-      variantPricings.map((pricing) => [pricing.variant_id, pricing]),
-    );
-
-    /* fetch product-image */
-    const productImages = await this.productImageRepository.find({
-      where: {
-        product_id: In(products.map((product) => product.id)),
-      },
-    });
-    const mapImages = new Map(
-      productImages.map((image) => [image.product_id, image]),
-    );
-
-    /* map through thr products and fetch all related products data */
-    const productsData = products.map((product) => {
-      const variant = mapVariants.get(product?.id);
-      const pricing = variant ? mapVariantPricing.get(variant?.id) : null;
-      const image = mapImages.get(product?.id);
-
-      return {
-        ...product,
-        image: image && {
-          id: image?.id,
-          image_url: image?.image_url,
-          is_primary: image?.is_primary,
-        },
-        pricing: pricing && {
-          id: pricing?.id,
-          selling_price: pricing?.selling_price,
-          crossed_price: pricing?.crossed_price,
-        },
-      };
-    });
+    const productsWithPricingDetailAndImage =
+      await this.productHelperService.fetchProductPricingDetailsAndImages(
+        products,
+      );
 
     this.logger.log(
       `fetched all products-data and their related variant-pricing and images`,
     );
     return {
-      data: productsData,
+      data: productsWithPricingDetailAndImage,
       page: page,
       limit: newLimit,
       total: totalProducts,
@@ -175,7 +131,7 @@ export class ProductService {
           'id',
           'variant_title',
           'quantity',
-          'in_stock',
+          'is_availability',
           'size',
           'color',
         ],
@@ -449,7 +405,6 @@ export class ProductService {
   async getAllProducts({
     page,
     limit,
-    status,
   }: {
     page: number;
     limit: number;
@@ -463,33 +418,38 @@ export class ProductService {
       });
     }
 
-    /* filter logic to filter a product with the status_type */
-    let filteredStatus: StatusEnumType | ReturnType<typeof In>;
-    if (status?.trim().toLowerCase() === '') {
-      filteredStatus = In([StatusEnumType.Published, StatusEnumType.Draft]);
-    } else {
-      if (status?.trim().toLowerCase() === StatusEnumType.Published) {
-        filteredStatus = StatusEnumType.Published;
-      } else {
-        filteredStatus = StatusEnumType.Draft;
-      }
-    }
-
     const newLimit: number = limit > 10 ? 10 : limit;
     const [products, totalProducts] = await this.productRepository.findAndCount(
       {
-        where: {
-          status: filteredStatus,
-        },
         skip: (page - 1) * newLimit,
         take: newLimit,
         order: { created_at: 'desc' },
+        select: [
+          'id',
+          'title',
+          'short_description',
+          'slug',
+          'in_stock',
+          'status',
+          'created_at',
+        ],
       },
     );
 
-    this.logger.log(`logger fetched successfully!`);
+    /* throw an empty response if not products found */
+    if (products.length === 0) {
+      return { message: 'No Products found', data: [] };
+    }
+
+    const productsWithQuantityAndImage =
+      await this.productHelperService.fetchProductVariantsQuantityAndImages(
+        products,
+      );
+
+    this.logger.log(`products fetched successfully!`);
+
     return {
-      data: products,
+      data: productsWithQuantityAndImage,
       page: page,
       limit: newLimit,
       total: totalProducts,
@@ -587,7 +547,7 @@ export class ProductService {
         variant_title: productVariantDto.variant_title,
         quantity: productVariantDto.quantity,
         product_id: productVariantDto.product_id,
-        in_stock: productVariantDto.in_stock,
+        is_availability: productVariantDto.is_availability,
       });
 
       this.logger.log('product_variant has been added!');
@@ -638,7 +598,7 @@ export class ProductService {
         {
           variant_title: productVariantDto.variant_title,
           quantity: productVariantDto.quantity,
-          in_stock: productVariantDto.in_stock,
+          is_availability: productVariantDto.is_availability,
           product_id: productVariantDto.product_id,
         },
       );

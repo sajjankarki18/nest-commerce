@@ -15,7 +15,7 @@ export class CreateProductVariantDto {
 
   @IsOptional()
   @IsBoolean()
-  in_stock: boolean;
+  is_availability: boolean;
 
   @IsOptional()
   @IsString({ message: 'enter a valid product_id' })
