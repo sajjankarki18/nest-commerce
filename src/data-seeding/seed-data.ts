@@ -16,6 +16,8 @@ import { ProductDescription } from 'src/products/entities/product-description.en
 import { ProductImage } from 'src/products/entities/product-image.entity';
 import { CurrencyTypeEnum } from 'src/enums/CurrencyType.enum';
 import { ColorEnum, SizeEnum } from 'src/enums/VariantDetails.enum';
+import { ProductQuestion } from 'src/products/entities/product-question.entity';
+import { productSpecification } from 'src/products/entities/product-specification.entity';
 
 export const seedData = async (dataSource: DataSource): Promise<void> => {
   await seedBannersData(dataSource);
@@ -179,6 +181,9 @@ const seedProductsData = async (dataSource: DataSource) => {
   const productDescriptionRepository =
     dataSource.getRepository(ProductDescription);
   const productImageRepository = dataSource.getRepository(ProductImage);
+  const productQuestionRepository = dataSource.getRepository(ProductQuestion);
+  const productSpecificationRepository =
+    dataSource.getRepository(productSpecification);
 
   /* while seeding products, we need to associate each products with the thirlLevelCategories */
   const categoryRepository = dataSource.getRepository(Category);
@@ -242,6 +247,20 @@ const seedProductsData = async (dataSource: DataSource) => {
     }
   }
 
+  /* product-specification */
+  for (const product of products) {
+    const numberOfProductSpec: number = faker.number.int({ min: 2, max: 4 });
+    for (let index = 0; index < numberOfProductSpec; index++) {
+      const productImage = productSpecificationRepository.create({
+        key: faker.lorem.word(),
+        value: faker.lorem.word(),
+        product_id: product.id,
+      });
+
+      await productSpecificationRepository.save(productImage);
+    }
+  }
+
   /* product-images */
   for (const product of products) {
     const numberOfProductImages: number = faker.number.int({ min: 2, max: 4 });
@@ -253,6 +272,22 @@ const seedProductsData = async (dataSource: DataSource) => {
       });
 
       await productImageRepository.save(productImage);
+    }
+  }
+
+  /* seed product-question and asnwers */
+  for (const product of products) {
+    const numberOfQuestions: number = faker.number.int({ min: 3, max: 5 });
+    for (let index = 0; index < numberOfQuestions; index++) {
+      const productQuestion = productQuestionRepository.create({
+        product_id: product.id,
+        question: faker.lorem.words(),
+        answer: faker.lorem.words(),
+        customer_id: faker.string.uuid(),
+        admin_user_id: faker.string.uuid(),
+      });
+
+      await productQuestionRepository.save(productQuestion);
     }
   }
   /* product-images */

@@ -28,9 +28,9 @@ export class AuthUserService {
 
   /* validate the email, check if the email arelady exists */
   async validateUserEmail(signupUserDto: SignupUserDto): Promise<void> {
-    const userEmail = await this.authUserRepository.findOne({
+    const userEmail = await this.authUserRepository.exists({
       where: {
-        email: signupUserDto.email,
+        email: signupUserDto.email.trim().toLowerCase(),
       },
     });
 
@@ -40,28 +40,49 @@ export class AuthUserService {
       this.logger.warn('email is aleady in use');
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
-        message: ['cannot create account, email already in use'],
+        message: ['Failed to register user. Email is already in use.'],
         error: 'BadRequest',
       });
     }
   }
 
+  confirmPassword(signupUserDto: SignupUserDto): void {
+    if (signupUserDto.password !== signupUserDto.confirm_password) {
+      throw new UnauthorizedException({
+        statusCode: HttpStatus.UNAUTHORIZED,
+        message: ['Passwords does not match, please try again later!'],
+        error: 'Unauthorized',
+      });
+    }
+  }
+
   /* create a new user */
-  async signupUser(signinUserDto: SignupUserDto): Promise<AuthUser> {
+  async signupUser(signinUserDto: SignupUserDto) {
     await this.validateUserEmail(signinUserDto);
+    this.confirmPassword(signinUserDto);
     try {
       /* hash the user password before creating it */
       const hashedPassword = await argon.hash(signinUserDto.password);
       const user = this.authUserRepository.create({
-        username: signinUserDto.username,
-        email: signinUserDto.email,
+        first_name: signinUserDto.first_name,
+        last_name: signinUserDto.last_name,
+        email: signinUserDto.email.trim().toLowerCase(),
         password: hashedPassword,
         phone_number: signinUserDto.phone_number,
         status: signinUserDto.status,
       });
 
       this.logger.log('the user has beem created successfully');
-      return await this.authUserRepository.save(user);
+      const savedUser = await this.authUserRepository.save(user);
+      return {
+        message: 'User has been registered successfully.',
+        user: {
+          id: savedUser.id,
+          first_name: savedUser.first_name,
+          last_name: savedUser.last_name,
+          email: savedUser.email,
+        },
+      };
     } catch (error) {
       this.logger.error(`some error occurred while creating a new user`, error);
       throw new InternalServerErrorException({

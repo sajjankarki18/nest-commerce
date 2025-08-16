@@ -14,7 +14,10 @@ export class AuthUser {
   id: string;
 
   @Column({ nullable: false })
-  username: string;
+  first_name: string;
+
+  @Column({ nullable: false })
+  last_name: string;
 
   @Column({ nullable: false, unique: true })
   email: string;

@@ -56,6 +56,20 @@ export class ProductController {
     return this.productService.getProductsBySlug(slug);
   }
 
+  /* get product description and specificaiton */
+  @Get('/product-details/:slug')
+  @ApiOperation({
+    summary: 'Get product description and specification by slug',
+  })
+  @ApiParam({
+    name: 'slug',
+    description: 'Unique slug identifier for the product',
+    type: String,
+  })
+  getProductDetails(@Param('slug') slug: string) {
+    return this.productService.getProductDetails(slug);
+  }
+
   /**
    * Get similar products
    */

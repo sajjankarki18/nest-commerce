@@ -9,17 +9,23 @@ import {
 import { StatusEnumType } from 'src/enums/StatusType.enum';
 
 export class SignupUserDto {
-  @IsNotEmpty({ message: 'username should not be empty!' })
-  @IsString({ message: 'enter a valid username' })
-  username: string;
+  @IsNotEmpty({ message: 'First_name should not be empty.' })
+  @IsString({ message: 'First name should be a valid string.' })
+  first_name: string;
 
-  @IsNotEmpty({ message: 'Email should not be empty' })
-  @IsEmail()
+  @IsNotEmpty({ message: 'Last_name should not be empty.' })
+  @IsString({ message: 'Last name should be a vallid string.' })
+  last_name: string;
+
+  @IsNotEmpty({ message: 'Email should not be empty.' })
+  @IsEmail({}, { message: 'Invalid Email.' })
   email: string;
 
   @IsNotEmpty({ message: 'Password should not be empty!' })
-  @IsString()
   password: string;
+
+  @IsNotEmpty({ message: 'Please, confirm your password.' })
+  confirm_password: string;
 
   @IsOptional()
   @IsNumber()

@@ -13,24 +13,25 @@ import { ProductDescription } from './entities/product-description.entity';
 import { ProductVariant } from './entities/product-variant.entity';
 import { ProductVariantRepository } from './repositories/product-variant.repository';
 import { ProductDescriptionRepository } from './repositories/product-description.repository';
-import { ProductVariantPricing } from './entities/product-variantPricing.entity';
 import { CreateProductDto } from './dto/product/create-product.dto';
 import slugify from 'slugify';
 import { StatusEnumType } from 'src/enums/StatusType.enum';
-import { In } from 'typeorm';
 import { CreateProductVariantDto } from './dto/product-variant/create-productVariant.dto';
 import { CreateProductDescriptionDto } from './dto/product-description/create-productDescription.dto';
-import { ProductVariantPricingRepository } from './repositories/product-variantPricing.repository';
 import { ProductImage } from './entities/product-image.entity';
 import { ProductImageRepository } from './repositories/product-image.repository';
 import { UpdateProductDto } from './dto/product/update-product.dto';
 import { UpdateProductVariantDto } from './dto/product-variant/update-productVariant.dto';
 import { UpdateProductDescriptionDto } from './dto/product-description/update-productDescription.dto';
-import { ProductQuestion } from './entities/product-question.dto';
+import { ProductQuestion } from './entities/product-question.entity';
 import { ProductQuestionRepository } from './repositories/product-question.repository';
 import { AddProductQuestionDto } from './dto/question/add-productQuestion.dto';
 import { ReplyProductDto } from './dto/question/reply-productQuestion.dto';
 import { ProductHelperService } from './product-helper.service';
+import { productSpecification } from './entities/product-specification.entity';
+import { ProductSpecificationRepository } from './repositories/product-specification.repository';
+
+const MAX_PRODUCTS_PER_PAGE: number = 10;
 
 @Injectable()
 export class ProductService {
@@ -41,10 +42,10 @@ export class ProductService {
     private readonly productRepository: ProductRepository,
     @InjectRepository(ProductDescription)
     private readonly productDescriptionRepository: ProductDescriptionRepository,
+    @InjectRepository(productSpecification)
+    private readonly productSpecificationRepository: ProductSpecificationRepository,
     @InjectRepository(ProductVariant)
     private readonly productVariantRepository: ProductVariantRepository,
-    @InjectRepository(ProductVariantPricing)
-    private readonly productVariantPricingRepository: ProductVariantPricingRepository,
     @InjectRepository(ProductImage)
     private readonly productImageRepository: ProductImageRepository,
     @InjectRepository(ProductQuestion)
@@ -58,7 +59,7 @@ export class ProductService {
   }: {
     page: number;
     limit: number;
-  }): Promise<{ data: Product[]; page: number; limit: number; total: number }> {
+  }) {
     if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 1 || limit < 1) {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
@@ -67,7 +68,8 @@ export class ProductService {
       });
     }
 
-    const newLimit: number = limit > 10 ? 10 : limit;
+    const newLimit: number =
+      limit > MAX_PRODUCTS_PER_PAGE ? MAX_PRODUCTS_PER_PAGE : limit;
     const [products, totalProducts] = await this.productRepository.findAndCount(
       {
         where: {
@@ -85,9 +87,20 @@ export class ProductService {
         products,
       );
 
+    if (products.length === 0) {
+      return {
+        message: 'No Products Found.',
+        data: [],
+        page,
+        limit: newLimit,
+        total: 0,
+      };
+    }
+
     this.logger.log(
       `fetched all products-data and their related variant-pricing and images`,
     );
+
     return {
       data: productsWithPricingDetailAndImage,
       page: page,
@@ -154,6 +167,47 @@ export class ProductService {
     };
   }
 
+  /* get product specification and descriptions */
+  async getProductDetails(slug: string) {
+    const product = await this.productRepository.findOne({
+      where: {
+        slug: slug,
+        status: StatusEnumType.Published,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException({
+        statusCode: HttpStatus.NOT_FOUND,
+        message: `Product with ${slug} has not found.`,
+        error: 'Not Found',
+      });
+    }
+
+    const [productDescription, productSpecificaition] = await Promise.all([
+      this.productDescriptionRepository.findOne({
+        where: {
+          product_id: product.id,
+        },
+        select: ['id', 'description'],
+      }),
+
+      this.productSpecificationRepository.findOne({
+        where: {
+          product_id: product.id,
+        },
+        select: ['id', 'key', 'value'],
+      }),
+    ]);
+
+    return {
+      data: {
+        product_description: productDescription,
+        product_specification: productSpecificaition,
+      },
+    };
+  }
+
   /* api to get similar products */
   async getSimilarProducts(slug: string) {
     const product = await this.productRepository.findOne({
@@ -177,60 +231,11 @@ export class ProductService {
       select: ['id', 'title', 'slug', 'status', 'category_id'],
     });
 
-    /* fetch product-images using batch query */
-    const productImages = await this.productImageRepository.find({
-      where: {
-        product_id: In(products.map((product) => product.id)),
-        is_primary: true,
-      },
-    });
-    const productImageMap = new Map(
-      productImages.map((image) => [image.product_id, image]),
-    );
-
-    /* fetch product-variant */
-    const productVariants = await this.productVariantRepository.find({
-      where: {
-        product_id: In(products.map((product) => product.id)),
-      },
-    });
-    const productVariantsMap = new Map(
-      productVariants.map((variant) => [variant.product_id, variant]),
-    );
-
-    /* fetch related product-pricing */
-    const productVariantPricing =
-      await this.productVariantPricingRepository.find({
-        where: {
-          variant_id: In(productVariants.map((variant) => variant.id)),
-        },
-      });
-    const productVariantPricingMap = new Map(
-      productVariantPricing.map((pricing) => [pricing.variant_id, pricing]),
-    );
-
-    /* map through each products and fetch related image and variant-pricing */
-    const productsData = products.map((product) => {
-      const productImage = productImageMap.get(product?.id);
-      const productVariant = productVariantsMap.get(product?.id);
-      const productVariantPricing = productVariant
-        ? productVariantPricingMap.get(productVariant?.id)
-        : null;
-
-      return {
-        ...product,
-        image: productImage && {
-          id: productImage?.id,
-          image_url: productImage?.image_url,
-          is_primary: productImage?.is_primary,
-        },
-        pricing: productVariantPricing && {
-          id: productVariantPricing?.id,
-          selling_price: productVariantPricing?.selling_price,
-          crossed_price: productVariantPricing?.crossed_price,
-        },
-      };
-    });
+    /* fetch product (stock, pricing) and images */
+    const productsData =
+      await this.productHelperService.fetchProductPricingDetailsAndImages(
+        products,
+      );
 
     return {
       data: productsData,
@@ -271,9 +276,11 @@ export class ProductService {
 
   /* get all questionfor the products */
   async getAllQuestions({
+    productId,
     page,
     limit,
   }: {
+    productId: string;
     page: number;
     limit: number;
   }): Promise<{
@@ -293,13 +300,29 @@ export class ProductService {
     const newLimit: number = limit > 10 ? 10 : limit;
     const [questions, totalQuestions] =
       await this.productQuestionRepository.findAndCount({
+        where: {
+          product_id: productId,
+        },
         skip: (page - 1) * newLimit,
         take: newLimit,
         order: { created_at: 'desc' },
+        select: [
+          'id',
+          'question',
+          'customer_id',
+          'answer',
+          'admin_user_id',
+          'created_at',
+        ],
       });
 
+    /* fetch the customer-infor associated with the product */
+    const questionsWithCustomerInfo =
+      await this.productHelperService.fetchCustomerInformationofQuestion(
+        questions,
+      );
     return {
-      data: questions,
+      data: questionsWithCustomerInfo,
       page: page,
       limit: limit,
       total: totalQuestions,
@@ -410,7 +433,7 @@ export class ProductService {
     limit: number;
     status?: StatusEnumType;
   }) {
-    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 0 || limit < 0) {
+    if (isNaN(Number(page)) || isNaN(Number(limit)) || page < 1 || limit < 1) {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
         message: ['page and limit should be of positive integers!'],
@@ -418,7 +441,8 @@ export class ProductService {
       });
     }
 
-    const newLimit: number = limit > 10 ? 10 : limit;
+    const newLimit: number =
+      limit > MAX_PRODUCTS_PER_PAGE ? MAX_PRODUCTS_PER_PAGE : limit;
     const [products, totalProducts] = await this.productRepository.findAndCount(
       {
         skip: (page - 1) * newLimit,
@@ -438,7 +462,13 @@ export class ProductService {
 
     /* throw an empty response if not products found */
     if (products.length === 0) {
-      return { message: 'No Products found', data: [] };
+      return {
+        message: 'No Products found',
+        data: [],
+        page,
+        limit: newLimit,
+        total: 0,
+      };
     }
 
     const productsWithQuantityAndImage =

@@ -8,9 +8,11 @@ import { ProductAdminController } from './products.admin.controller';
 import { ProductService } from './products.service';
 import { ProductImage } from './entities/product-image.entity';
 import { ProductController } from './products.controller';
-import { ProductQuestion } from './entities/product-question.dto';
+import { ProductQuestion } from './entities/product-question.entity';
 import { productAuthController } from './product-auth.controller';
 import { ProductHelperService } from './product-helper.service';
+import { Customer } from 'src/customers/entities/customer.entity';
+import { productSpecification } from './entities/product-specification.entity';
 
 @Module({
   imports: [
@@ -19,8 +21,10 @@ import { ProductHelperService } from './product-helper.service';
       ProductVariant,
       ProductVariantPricing,
       ProductDescription,
+      productSpecification,
       ProductImage,
       ProductQuestion,
+      Customer,
     ]),
   ],
   controllers: [

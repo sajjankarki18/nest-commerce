@@ -50,7 +50,7 @@ export class productAuthController {
   /**
    * Get all questions of products (paginated)
    */
-  @Get('/questions')
+  @Get('/questions/:productId')
   @ApiOperation({
     summary: 'Get all product questions',
     description: 'Fetches all questions asked by customers with pagination.',
@@ -70,9 +70,10 @@ export class productAuthController {
     example: 10,
   })
   getAllQuestions(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Param('productId') productId: string,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
   ) {
-    return this.productService.getAllQuestions({ page, limit });
+    return this.productService.getAllQuestions({ productId, page, limit });
   }
 }

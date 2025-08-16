@@ -15,7 +15,8 @@ import {
 import { ProductVariant } from './product-variant.entity';
 import { ProductDescription } from './product-description.entity';
 import { ProductImage } from './product-image.entity';
-import { ProductQuestion } from './product-question.dto';
+import { ProductQuestion } from './product-question.entity';
+import { productSpecification } from './product-specification.entity';
 
 @Entity({ name: 'product' })
 export class Product {
@@ -45,6 +46,12 @@ export class Product {
     (product_description) => product_description.product,
   )
   product_description: ProductDescription[];
+
+  @OneToMany(
+    () => productSpecification,
+    (product_specification) => product_specification.product,
+  )
+  product_specification: productSpecification[];
 
   @ManyToOne(() => Category, (category) => category.product)
   @JoinColumn({ name: 'category_id' })

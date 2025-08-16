@@ -27,9 +27,9 @@ export class StoreAuthService {
 
   /* helper function to check if the customer exists (dont allow to create duplicate customer with same email) */
   async checkCustomerExists(signupCustomerDto: SignupCustomerDto) {
-    const customer = await this.customerRepository.findOne({
+    const customer = await this.customerRepository.exists({
       where: {
-        email: signupCustomerDto.email,
+        email: signupCustomerDto.email.trim().toLowerCase(),
       },
     });
 
@@ -46,7 +46,7 @@ export class StoreAuthService {
   /* helper function to confirm password */
   confirmPassword(signupCustomerDto: SignupCustomerDto) {
     /* validate the confirm password and actual password */
-    if (signupCustomerDto?.password !== signupCustomerDto.confirm_password) {
+    if (signupCustomerDto.password !== signupCustomerDto.confirm_password) {
       this.logger.warn('Passwords does not match, please try again later.');
       throw new BadRequestException({
         statusCode: HttpStatus.BAD_REQUEST,
@@ -62,14 +62,15 @@ export class StoreAuthService {
   ): Promise<{ message: string }> {
     /* validate if customer with this email already exists */
     await this.checkCustomerExists(signupCustomerDto);
-    /* hash password using argon-hasing-algorithm */
-    const hashedPassword = await argon.hash(signupCustomerDto?.password);
     /* helper function to confirm password */
     this.confirmPassword(signupCustomerDto);
     try {
+      /* hash password using argon-hasing-algorithm */
+      const hashedPassword = await argon.hash(signupCustomerDto?.password);
       const customer = this.customerRepository.create({
-        username: signupCustomerDto.username,
-        email: signupCustomerDto.email,
+        first_name: signupCustomerDto.first_name,
+        last_name: signupCustomerDto.last_name,
+        email: signupCustomerDto.email.trim().toLowerCase(),
         password: hashedPassword,
         phone_number: signupCustomerDto.phone_number,
         status: signupCustomerDto.status,
@@ -188,7 +189,8 @@ export class StoreAuthService {
 
     return {
       id: customerInfo?.id,
-      first_name: customerInfo?.username,
+      first_name: customerInfo?.first_name,
+      last_name: customerInfo?.last_name,
       email: customerInfo?.email,
       aut_provider_type: customerInfo?.auth_provider_type,
     };

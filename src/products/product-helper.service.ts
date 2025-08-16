@@ -9,6 +9,10 @@ import { ProductImageRepository } from './repositories/product-image.repository'
 import { In } from 'typeorm';
 import { ProductVariantPricingRepository } from './repositories/product-variantPricing.repository';
 import { ProductVariantPricing } from './entities/product-variantPricing.entity';
+import { ProductQuestion } from './entities/product-question.entity';
+import { ProductQuestionRepository } from './repositories/product-question.repository';
+import { Customer } from 'src/customers/entities/customer.entity';
+import { CustomerRepository } from 'src/customers/repositories/customer.repository';
 
 @Injectable()
 export class ProductHelperService {
@@ -21,6 +25,10 @@ export class ProductHelperService {
     private readonly productImageRepository: ProductImageRepository,
     @InjectRepository(ProductVariantPricing)
     private readonly productVariantPricingRepository: ProductVariantPricingRepository,
+    @InjectRepository(Customer)
+    private readonly customerRepository: CustomerRepository,
+    @InjectRepository(ProductQuestion)
+    private readonly productQuestionRepository: ProductQuestionRepository,
   ) {}
 
   /* helper function to fetch products and it's related variants and images on store-front */
@@ -132,11 +140,43 @@ export class ProductHelperService {
 
       return {
         ...product,
-        quantity: totalProductQuantity ?? null,
+        quantity: totalProductQuantity ?? 0,
         image_url: productImage?.image_url ?? null,
       };
     });
 
     return productWithQuantityAndImage;
+  }
+
+  /* fetch customer-information with associated with the product-questions */
+  async fetchCustomerInformationofQuestion(questions: ProductQuestion[]) {
+    const customerIds: string[] = questions.map(
+      (question) => question.customer_id,
+    );
+
+    const customerInformations = await this.customerRepository.find({
+      where: {
+        id: In(customerIds),
+      },
+    });
+
+    const customerInfoMap = new Map(
+      customerInformations.map((customerInfo) => [
+        customerInfo.id,
+        customerInfo,
+      ]),
+    );
+
+    const questionsWithCustomerInfo = questions.map((question) => {
+      const customerInfo = customerInfoMap.get(question.customer_id);
+
+      return {
+        ...question,
+        first_name: customerInfo?.first_name,
+        last_name: customerInfo?.last_name.charAt(0),
+      };
+    });
+
+    return questionsWithCustomerInfo;
   }
 }
