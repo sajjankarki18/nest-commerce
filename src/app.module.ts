@@ -20,6 +20,7 @@ import { DiscountModule } from './discount/discount.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { CustomerAuthMiddleware } from './middlewares/customer-auth.middleware';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { CustomerAuthMiddleware } from './middlewares/customer-auth.middleware';
     CustomersModule,
     AddressModule,
     DiscountModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [

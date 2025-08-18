@@ -471,15 +471,15 @@ export class ProductService {
       };
     }
 
-    const productsWithQuantityAndImage =
-      await this.productHelperService.fetchProductVariantsQuantityAndImages(
+    const productsWithImageAndQuantity =
+      await this.productHelperService.fetchProductsWithImageAndQuantity(
         products,
       );
 
     this.logger.log(`products fetched successfully!`);
 
     return {
-      data: productsWithQuantityAndImage,
+      data: productsWithImageAndQuantity,
       page: page,
       limit: newLimit,
       total: totalProducts,

@@ -15,6 +15,8 @@ import { SigninCustomerDto } from 'src/customers/dto/signin-customer.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthProviderTypes } from 'src/enums/auth-providerType.enum';
+import { Customer } from 'src/customers/entities/customer.entity';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class StoreAuthService {
@@ -26,8 +28,11 @@ export class StoreAuthService {
   ) {}
 
   /* helper function to check if the customer exists (dont allow to create duplicate customer with same email) */
-  async checkCustomerExists(signupCustomerDto: SignupCustomerDto) {
-    const customer = await this.customerRepository.exists({
+  async checkCustomerExists(
+    signupCustomerDto: SignupCustomerDto,
+    signupManager: EntityManager,
+  ) {
+    const customer = await signupManager.exists(Customer, {
       where: {
         email: signupCustomerDto.email.trim().toLowerCase(),
       },
@@ -36,7 +41,7 @@ export class StoreAuthService {
     if (customer) {
       this.logger.warn('Customer with this email already exists.');
       throw new ConflictException({
-        statusCode: HttpStatus.NOT_FOUND,
+        statusCode: HttpStatus.CONFLICT,
         message: ['customer with this email already exists!'],
         error: 'Conflict',
       });
@@ -57,66 +62,68 @@ export class StoreAuthService {
   }
 
   /* register a new user */
-  async signup(
-    signupCustomerDto: SignupCustomerDto,
-  ): Promise<{ message: string }> {
-    /* validate if customer with this email already exists */
-    await this.checkCustomerExists(signupCustomerDto);
+  async signup(signupCustomerDto: SignupCustomerDto) {
     /* helper function to confirm password */
     this.confirmPassword(signupCustomerDto);
-    try {
-      /* hash password using argon-hasing-algorithm */
-      const hashedPassword = await argon.hash(signupCustomerDto?.password);
-      const customer = this.customerRepository.create({
-        first_name: signupCustomerDto.first_name,
-        last_name: signupCustomerDto.last_name,
-        email: signupCustomerDto.email.trim().toLowerCase(),
-        password: hashedPassword,
-        phone_number: signupCustomerDto.phone_number,
-        status: signupCustomerDto.status,
-      });
+    return await this.customerRepository.manager.transaction(
+      async (signupManager) => {
+        try {
+          /* validate if customer with this email already exists */
+          await this.checkCustomerExists(signupCustomerDto, signupManager);
 
-      const savedCustomer = await this.customerRepository.save(customer);
+          /* hash password using argon-hasing-algorithm */
+          const hashedPassword = await argon.hash(signupCustomerDto?.password);
 
-      /* if user registerd their account with email, then update the auth_provider_type as email */
-      await this.customerRepository.update(
-        { id: savedCustomer.id },
-        {
-          auth_provider_type: AuthProviderTypes.Email,
-        },
-      );
+          const customer = signupManager.create(Customer, {
+            first_name: signupCustomerDto.first_name,
+            last_name: signupCustomerDto.last_name,
+            email: signupCustomerDto.email.trim().toLowerCase(),
+            password: hashedPassword,
+            phone_number: signupCustomerDto.phone_number,
+            status: signupCustomerDto.status,
+            auth_provider_type: AuthProviderTypes.Email,
+          });
 
-      this.logger.log('User has been registered successfully.');
-      return {
-        message: 'Customer has been registered successfully',
-      };
-    } catch (error) {
-      this.logger.error('Invalid password, please try again later', error);
-      throw new InternalServerErrorException({
-        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: [
-          'some error occurred while creating a new account, please try again later!',
-        ],
-        error: 'Not Found',
-      });
-    }
+          const savedCustomer = await signupManager.save(customer);
+
+          this.logger.log('Customer has been registered successfully.');
+          return {
+            message: 'Customer has been registered successfully.',
+            customer: {
+              id: savedCustomer.id,
+              first_name: savedCustomer.first_name,
+              last_name: savedCustomer.last_name,
+              email: savedCustomer.email,
+            },
+          };
+        } catch (error) {
+          this.logger.error('Invalid password, please try again later.', error);
+          throw new InternalServerErrorException({
+            statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+            message: [
+              'Some error occurred while creating a new account, please try again later.',
+            ],
+            error: 'Not Found',
+          });
+        }
+      },
+    );
   }
 
   /* login user */
-  async signin(
-    signinCustomerDto: SigninCustomerDto,
-  ): Promise<{ access_token: string }> {
+  async signin(signinCustomerDto: SigninCustomerDto) {
+    const normalizedUserEmail = signinCustomerDto.email.trim().toLowerCase();
     const customerEmail = await this.customerRepository.findOne({
       where: {
-        email: signinCustomerDto.email,
+        email: normalizedUserEmail,
       },
     });
 
     if (!customerEmail) {
-      this.logger.warn('Invalid email, please try again later');
+      this.logger.warn('Invalid email, please try again later.');
       throw new UnauthorizedException({
         statusCode: HttpStatus.UNAUTHORIZED,
-        message: ['Invalid email, please try again later!'],
+        message: ['Invalid email, please try again later.'],
         error: 'Not Found',
       });
     }
@@ -125,11 +132,12 @@ export class StoreAuthService {
       customerEmail?.password,
       signinCustomerDto?.password,
     );
+
     if (!passVerify) {
-      this.logger.warn('Invalid password, please try again later');
+      this.logger.warn('Invalid password, please try again later.');
       throw new UnauthorizedException({
         statusCode: HttpStatus.UNAUTHORIZED,
-        message: ['Invalid password, please try again later!'],
+        message: ['Invalid password, please try again later.'],
         error: 'Unauthorized',
       });
     }
@@ -139,10 +147,7 @@ export class StoreAuthService {
   }
 
   /* generate a new access-token when user logs in */
-  async jwtAccessToken(
-    userId: string,
-    email: string,
-  ): Promise<{ message: string; access_token: string }> {
+  async jwtAccessToken(userId: string, email: string) {
     try {
       const payload = {
         userId: userId,
@@ -163,7 +168,7 @@ export class StoreAuthService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          'some error occurred while signing in, please try again later',
+          'Some error occurred while signing in, please try again later.',
         ],
         error: 'Internal Server Error',
       });
@@ -182,7 +187,7 @@ export class StoreAuthService {
       this.logger.warn('User details has been expired or does not exists.');
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
-        message: ['User detail has been expired or does not exists'],
+        message: ['User detail has been expired or does not exists.'],
         error: 'Not Found',
       });
     }

@@ -8,6 +8,9 @@ import { Product } from 'src/products/entities/product.entity';
 import { ProductVariant } from 'src/products/entities/product-variant.entity';
 import { ProductVariantPricing } from 'src/products/entities/product-variantPricing.entity';
 import { ProductImage } from 'src/products/entities/product-image.entity';
+import { ProductHelperService } from 'src/products/product-helper.service';
+import { Customer } from 'src/customers/entities/customer.entity';
+import { ProductQuestion } from 'src/products/entities/product-question.entity';
 
 @Module({
   imports: [
@@ -17,9 +20,11 @@ import { ProductImage } from 'src/products/entities/product-image.entity';
       ProductVariant,
       ProductVariantPricing,
       ProductImage,
+      Customer,
+      ProductQuestion,
     ]),
   ],
   controllers: [CategoriesAdminController, CategoriesController],
-  providers: [CategoriesService, Logger],
+  providers: [CategoriesService, ProductHelperService, Logger],
 })
 export class CategoriesModule {}

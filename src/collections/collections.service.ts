@@ -27,6 +27,8 @@ import { ProductVariantPricingRepository } from 'src/products/repositories/produ
 import { CollectionRedirectTypeEnum } from './types/collection-redirectType.enum';
 import { In } from 'typeorm';
 
+const MAX_ITEMS_PER_PAGE: number = 10;
+
 @Injectable()
 export class CollectionsService {
   constructor(
@@ -269,17 +271,18 @@ export class CollectionsService {
       if (
         isNaN(Number(page)) ||
         isNaN(Number(limit)) ||
-        page < 0 ||
-        limit < 0
+        page < 1 ||
+        limit < 1
       ) {
         throw new ConflictException({
           statusCode: HttpStatus.NOT_FOUND,
-          message: ['page and limit should be of positive integers!'],
+          message: ['Page and Limit should be of positive integers!'],
           error: 'Conflict',
         });
       }
 
-      const newLimit: number = limit > 10 ? 10 : limit;
+      const newLimit: number =
+        limit > MAX_ITEMS_PER_PAGE ? MAX_ITEMS_PER_PAGE : limit;
       const [collections, totalCollections] =
         await this.collectionRepository.findAndCount({
           skip: (page - 1) * newLimit,
@@ -287,7 +290,7 @@ export class CollectionsService {
           order: { created_at: 'desc' },
         });
 
-      this.logger.log('banners fetched successfully!');
+      this.logger.log('collections fetched successfully!');
       return {
         data: collections,
         page: page,
@@ -296,13 +299,13 @@ export class CollectionsService {
       };
     } catch (error) {
       this.logger.error(
-        'some error occurred while fetching the banners!',
+        'some error occurred while fetching the collections!',
         error,
       );
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          'some error occurred while fetching all banners, please try again!',
+          'Some error occurred while fetching all collections, please try again!',
         ],
         error: 'Internal Server Error',
       });

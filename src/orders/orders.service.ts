@@ -20,6 +20,8 @@ import { CartStatusEnum } from 'src/enums/cart-status.enum';
 import { ProductImage } from 'src/products/entities/product-image.entity';
 import { ProductImageRepository } from 'src/products/repositories/product-image.repository';
 
+const MAX_ORDERS_PER_PAGE: number = 5;
+
 @Injectable()
 export class ordersService {
   constructor(
@@ -137,7 +139,7 @@ export class ordersService {
     if (!order) {
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
-        message: ['Order associated with the user has not found'],
+        message: ['Order associated with the user has not found.'],
         error: 'Not Found',
       });
     }
@@ -200,7 +202,7 @@ export class ordersService {
       });
     }
 
-    if (page < 0 || limit < 0 || order_item_limit < 0) {
+    if (page < 1 || limit < 1 || order_item_limit < 1) {
       throw new ConflictException({
         statusCode: HttpStatus.CONFLICT,
         messae: ['page and limit should be of positive integers.'],
@@ -209,7 +211,8 @@ export class ordersService {
     }
 
     /* limit the orders-lists to 5 */
-    const newLimit: number = limit > 5 ? 5 : limit;
+    const newLimit: number =
+      limit > MAX_ORDERS_PER_PAGE ? MAX_ORDERS_PER_PAGE : limit;
 
     const [orders, totalOrders] = await this.orderRepository.findAndCount({
       where: {

@@ -100,11 +100,11 @@ export class ProductHelperService {
     return productsWithPricingDetailAndImage;
   }
 
-  /* helper function to fetch product-variants (quantity) and product-images on PORTAL */
-  async fetchProductVariantsQuantityAndImages(products: Product[]) {
+  async fetchProductsWithImageAndQuantity(products: Product[]) {
     const productIds: string[] = products.map((product) => product.id);
 
-    const [productVariantsQuantity, productImages] = await Promise.all([
+    /* Fetch productVariants and productImages through parallel fetching */
+    const [productVariants, productImages] = await Promise.all([
       this.productVariantRepository.find({
         where: {
           product_id: In(productIds),
@@ -119,33 +119,34 @@ export class ProductHelperService {
       }),
     ]);
 
-    /* calculate the total product-variants quantity for each product */
-    const productVariantsQuantityMap = new Map<string, number>();
-    for (const variantQuantity of productVariantsQuantity) {
-      const currentQuantity: number =
-        productVariantsQuantityMap.get(variantQuantity.product_id) ?? 0;
-      productVariantsQuantityMap.set(
-        variantQuantity.product_id,
-        currentQuantity + variantQuantity.quantity,
-      );
-    }
-
+    /* map product-images for faster lookup */
     const productImagesMap = new Map(
       productImages.map((image) => [image.product_id, image]),
     );
 
-    const productWithQuantityAndImage = products.map((product) => {
-      const totalProductQuantity = productVariantsQuantityMap.get(product.id);
+    /* map each product-variants quantity and add it */
+    const productVariantsMap = new Map<string, number>();
+    for (const productVariant of productVariants) {
+      const currentQuantity: number =
+        productVariantsMap.get(productVariant?.product_id) ?? 0;
+      productVariantsMap.set(
+        productVariant.product_id,
+        currentQuantity + productVariant.quantity,
+      );
+    }
+
+    const productsWithImageAndQuantity = products.map((product) => {
+      const totalQuantity = productVariantsMap.get(product.id);
       const productImage = productImagesMap.get(product.id);
 
       return {
         ...product,
-        quantity: totalProductQuantity ?? 0,
-        image_url: productImage?.image_url ?? null,
+        image_url: productImage?.image_url || null,
+        quantity: totalQuantity,
       };
     });
 
-    return productWithQuantityAndImage;
+    return productsWithImageAndQuantity;
   }
 
   /* fetch customer-information with associated with the product-questions */

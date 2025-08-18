@@ -8,6 +8,7 @@ import { Product } from 'src/products/entities/product.entity';
 import { ProductVariant } from 'src/products/entities/product-variant.entity';
 import { ProductVariantPricing } from 'src/products/entities/product-variantPricing.entity';
 import { ProductImage } from 'src/products/entities/product-image.entity';
+import { CartHelperService } from './cart-helper.service';
 
 @Module({
   imports: [
@@ -21,6 +22,6 @@ import { ProductImage } from 'src/products/entities/product-image.entity';
     ]),
   ],
   controllers: [CartController],
-  providers: [CartService, Logger],
+  providers: [CartService, Logger, CartHelperService],
 })
 export class CartModule {}

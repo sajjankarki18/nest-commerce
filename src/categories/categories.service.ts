@@ -22,6 +22,9 @@ import { ProductVariantPricing } from 'src/products/entities/product-variantPric
 import { ProductImage } from 'src/products/entities/product-image.entity';
 import { ProductImageRepository } from 'src/products/repositories/product-image.repository';
 import { ProductVariantPricingRepository } from 'src/products/repositories/product-variantPricing.repository';
+import { ProductHelperService } from 'src/products/product-helper.service';
+
+const MAX_ITEMS_PER_PAGE: number = 10;
 
 @Injectable()
 export class CategoriesService {
@@ -36,6 +39,7 @@ export class CategoriesService {
     private readonly productVariantPricingRepository: ProductVariantPricingRepository,
     @InjectRepository(ProductImage)
     private readonly productImageRepository: ProductImageRepository,
+    private readonly productHelperService: ProductHelperService,
     private readonly logger: Logger,
   ) {}
 
@@ -57,13 +61,13 @@ export class CategoriesService {
       };
     } catch (error) {
       this.logger.error(
-        'some error occurred while fetching parent_categories!',
+        'some error occurred while fetching parent_categories.',
         error,
       );
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          `some error occurred while fetching parent_categories, please try again`,
+          `Some error occurred while fetching parent_categories, please try again.`,
         ],
         error: 'Internal Server Error',
       });
@@ -134,7 +138,7 @@ export class CategoriesService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          'some error occurred while fetching the category, please try again!',
+          'Some error occurred while fetching the category and sub-data, please try again.',
         ],
         error: 'Internal Server Error',
       });
@@ -142,7 +146,7 @@ export class CategoriesService {
   }
 
   /* get all related products by category slug */
-  async getAllCategoryProductsBySlug(slug: string) {
+  async getAllCategoryProductsByCategorySlug(slug: string) {
     const category = await this.categoryRepository.findOne({
       where: {
         slug: slug,
@@ -152,77 +156,24 @@ export class CategoriesService {
     if (!category) {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-        message: [`category with slug ${slug} not found!`],
+        message: [`Category with slug ${slug} not found!`],
         error: 'Not Found',
       });
     }
 
     const products = await this.productRepository.find({
       where: {
-        category_id: category?.id,
+        category_id: category.id,
         status: StatusEnumType.Published,
       },
       select: ['id', 'title', 'short_description', 'slug', 'category_id'],
     });
 
-    /* fetch those products by category slug */
-    /* fetch product-variants */
-    const productVariants = await this.productVariantRepository.find({
-      where: {
-        product_id: In(products.map((product) => product.id)),
-      },
-    });
-    const mapProductVariants = new Map(
-      productVariants.map((variant) => [variant.product_id, variant]),
-    );
-
-    /* fetch product-pricing */
-    const productVariantsPricing =
-      await this.productVariantPricingRepository.find({
-        where: {
-          variant_id: In(productVariants.map((variant) => variant.id)),
-        },
-      });
-    const mapProductVariantsPricing = new Map(
-      productVariantsPricing.map((variantPricing) => [
-        variantPricing.variant_id,
-        variantPricing,
-      ]),
-    );
-
-    /* fetch product-images */
-    const productImages = await this.productImageRepository.find({
-      where: {
-        product_id: In(products.map((product) => product.id)),
-        is_primary: true,
-      },
-    });
-    const mapProductImages = new Map(
-      productImages.map((image) => [image.product_id, image]),
-    );
-
-    /* map through each products and fetch their related product_images and variants */
-    const productsData = products.map((product) => {
-      const variant = mapProductVariants.get(product?.id);
-      const pricing = variant
-        ? mapProductVariantsPricing.get(variant?.id)
-        : null;
-      const image = mapProductImages.get(product?.id);
-
-      return {
-        ...product,
-        product_pricing: pricing && {
-          id: pricing?.id,
-          selling_price: pricing?.selling_price,
-          crossed_price: pricing?.crossed_price,
-        },
-        image: image && {
-          id: image?.id,
-          image_url: image?.image_url,
-          is_primary: image?.is_primary,
-        },
-      };
-    });
+    /* fetch product related details by category-slug */
+    const productsData =
+      await this.productHelperService.fetchProductPricingDetailsAndImages(
+        products,
+      );
 
     return {
       data: productsData,
@@ -258,7 +209,7 @@ export class CategoriesService {
             this.logger.warn(`category can be updated only upto three levels!`);
             throw new ConflictException({
               statusCode: HttpStatus.CONFLICT,
-              message: ['category can be only updated upto three levels!'],
+              message: ['Category can be only updated upto three levels!'],
               error: 'Conflict',
             });
           }
@@ -304,7 +255,7 @@ export class CategoriesService {
       throw new InternalServerErrorException({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: [
-          'some error occurred while creating a new category, please try again!',
+          'Some error occurred while creating a new category, please try again.',
         ],
         error: 'Internal Server Error',
       });
@@ -346,7 +297,8 @@ export class CategoriesService {
         filterStatus = StatusEnumType.Draft;
       }
     }
-    const newLimit: number = limit > 10 ? 10 : limit;
+    const newLimit: number =
+      limit > MAX_ITEMS_PER_PAGE ? MAX_ITEMS_PER_PAGE : limit;
     const [categories, totalCategories] =
       await this.categoryRepository.findAndCount({
         where: {
@@ -377,7 +329,7 @@ export class CategoriesService {
       this.logger.error('category not found!');
       throw new NotFoundException({
         statusCode: HttpStatus.NOT_FOUND,
-        message: [`category with ${id} not found!`],
+        message: [`Category with ${id} not found!`],
         error: 'Not Found',
       });
     }
@@ -442,12 +394,12 @@ export class CategoriesService {
       /* if it does, then restrict deleting it */
       if (child_categories.length > 0) {
         this.logger.warn(
-          `cannot delete category, child categories exists within it!`,
+          `cannot delete category, child categories exists within it.`,
         );
         throw new ConflictException({
           statusCode: HttpStatus.CONFLICT,
           message: [
-            'category cannot not be deleted, it has existing child categories!',
+            'Category cannot not be deleted, it has existing sub-categories.',
           ],
           error: 'Conflict',
         });
@@ -462,12 +414,12 @@ export class CategoriesService {
 
       if (grand_child_categories.length > 0) {
         this.logger.warn(
-          `cannot delete category, child categories exists within it!`,
+          `cannot delete category, child categories exists within it.`,
         );
         throw new ConflictException({
           statusCode: HttpStatus.CONFLICT,
           message: [
-            'category cannot be deleted, it has existing child categories!',
+            'Category cannot be deleted, it has existing sub-categories.',
           ],
           error: 'Conflict',
         });
@@ -478,7 +430,7 @@ export class CategoriesService {
     this.logger.log('category has been deleted!');
     return {
       id: `${id}`,
-      message: 'category deleted successfully!',
+      message: 'Category deleted successfully.',
     };
   }
 }
